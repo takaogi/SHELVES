@@ -4,6 +4,7 @@ __pycache__/
 *.pyo
 *.pyd
 *.so
+*.spec
 *.egg-info/
 dist/
 build/
@@ -23,9 +24,11 @@ env/
 .DS_Store
 Thumbs.db
 run_shelves.bat
+
 # --- Project runtime outputs ---
 data/
 *.log
+temp/
 
 # Secrets / keys
 resources/api_key.txt
