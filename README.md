@@ -1,2 +1,3 @@
 # SHELVES
-ソロTRPG用AI
+ソロTRPG用AI WIP
+
