@@ -21,7 +21,7 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
-
+run_shelves.bat
 # --- Project runtime outputs ---
 data/
 *.log
