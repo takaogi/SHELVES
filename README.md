@@ -1,3 +1,4 @@
 # SHELVES
-ソロTRPG用AI WIP
+ド素人によるソロTRPG用AI WIP
+まともなコーディングを期待するなよ！！
 
