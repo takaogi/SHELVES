@@ -1,0 +1,2 @@
+# SHELVES
+ソロTRPG用AI
