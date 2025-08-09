@@ -142,7 +142,11 @@ class SessionCreate:
         self.ctx = ctx
         self.progress_info = progress_info
         self.flags = progress_info.setdefault("flags", {})
-        self.wid = self.flags.get("worldview", {}).get("id", "")
+        self.wid = (
+            self.flags.get("worldview_id")
+            or self.ctx.state.worldview_id
+            or self.flags.get("worldview", {}).get("id")
+        )
         self.state = ctx.state
         self.session_mgr = ctx.session_mgr
 
@@ -732,7 +736,7 @@ class SessionCreate:
 
     def _ask_scenario_direction(self) -> tuple[dict, str]:
         pc = self.flags.get("player_character", {})
-        wid = self.wid
+        wid = self.flags.get("worldview_id")
         worldview = self.ctx.worldview_mgr.get_entry_by_id(wid)
         is_sequel = "sequel_to" in self.flags
 
@@ -887,7 +891,7 @@ class SessionCreate:
         meta = self.flags.get("_scenario_meta", {})
         length = meta.get("length", "")
         pc = self.flags.get("player_character", {})
-        wid = self.wid
+        wid = self.flags.get("worldview_id")
         worldview = self.ctx.worldview_mgr.get_entry_by_id(wid)
 
         self.ctx.nouns_mgr.set_worldview_id(wid)

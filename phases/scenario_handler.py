@@ -205,9 +205,10 @@ class ScenarioHandler:
 
         #if self.flags.get("intent") != "chapter_intro":
         #    self.flags["intent"] = "section_intro"
-
         self.progress_info["step"] = 2000
-        return self.progress_info, "【システム】セクション進行"
+        if self.flags.get("intent") == "chapter_intro":
+            return self.progress_info, None
+        return self.progress_info, ""
 
 
     def _intent_router(self, player_input: str) -> tuple[dict, str]:

@@ -45,7 +45,7 @@ class SessionResume:
             return self.progress_info, None
 
         elif result == "ended":
-            session = self.session_mgr.load(sid)
+            session = self.session_mgr.get_entry_by_id(sid)
             title = session.get("title", "（無題）")
 
             self.flags["id"] = sid
@@ -67,16 +67,29 @@ class SessionResume:
 
         if text in ("はい", "はい。", "yes", "y", "うん"):
             old_sid = self.flags["id"]
-            wid = self.flags["worldview_id"]
+            wid = self.flags.get("worldview_id")
+
+            # 元セッションのプレイヤーキャラを取得
+            session = self.session_mgr.get_entry_by_id(old_sid) or {}
+            pcid = session.get("player_character")
+            pc_data = None
+            if pcid:
+                self.ctx.character_mgr.set_worldview_id(wid)
+                try:
+                    pc_data = self.ctx.character_mgr.load_character_file(pcid)
+                except FileNotFoundError:
+                    pc_data = None
 
             self.progress_info["phase"] = "session_create"
             self.progress_info["step"] = 0
             self.progress_info["flags"] = {
+                "sequel_to": old_sid,
                 "worldview_id": wid,
-                "sequel_to": old_sid
+                "player_character": pc_data
             }
             self.progress_info["auto_continue"] = True
             return self.progress_info, "続編セッションの作成を開始します。"
+
 
 
         else:
