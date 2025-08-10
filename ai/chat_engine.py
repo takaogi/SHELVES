@@ -119,7 +119,7 @@ class ChatEngine:
 
         model = resolve_model_name(model_level)
         log.info(f"[{caller_name}] Responses API 送信 (model={model})")
-        log.info(f"[{caller_name}] 送信メッセージ全体: {json.dumps(msgs, ensure_ascii=False, indent=2)}")
+        #log.info(f"[{caller_name}] 送信メッセージ全体: {json.dumps(msgs, ensure_ascii=False, indent=2)}")
 
         # reasoning 努力度（任意）
         reasoning = None
@@ -166,7 +166,7 @@ class ChatEngine:
                 log.info(f"[{caller_name}] トークン使用量: input={inp} / output={out} / total={tot}")
 
             log.info(f"[{caller_name}] Responses API 受信")
-            log.info(f"[{caller_name}] 応答テキスト: {text[:500]}{'...' if len(text) > 500 else ''}")
+            #log.info(f"[{caller_name}] 応答テキスト: {text[:500]}{'...' if len(text) > 500 else ''}")
 
             if schema:
                 try:
