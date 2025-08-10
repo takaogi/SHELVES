@@ -21,7 +21,7 @@ class SessionManager(BaseManager):
     def list_sessions_by_worldview(self, worldview_id: str) -> list:
         return [s for s in self.entries if s.get("worldview_id") == worldview_id]
 
-    def new_session(self, worldview_id: str, title: str = "", player_character_id: str| None = None, chapter: int = 1) -> str:
+    def new_session(self, worldview_id: str, title: str = "", player_character_id: str| None = None) -> str:
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
         sid = f"session_{ts}_{uuid.uuid4().hex[:4]}"
         created = datetime.now().isoformat()
@@ -32,7 +32,6 @@ class SessionManager(BaseManager):
             "status": "preparation",
             "title": title,
             "player_character": player_character_id or None,
-            "current_chapter": chapter,
             "created": created
         }
 
@@ -63,7 +62,6 @@ class SessionManager(BaseManager):
             "status": "preparation",
             "title": new_title,
             "player_character": player_character,
-            "current_chapter": 1,
             "created": created,
             "cloned_from": old_sid
         }

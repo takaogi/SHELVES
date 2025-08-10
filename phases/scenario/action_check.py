@@ -176,7 +176,7 @@ class ActionCheck:
 
 
         return (
-            f"\n行動内容：{result['action']}。\n"
+            f"\n行動内容：{result['action']}\n"
             f"では、行為判定を行います。スキル候補：〈{result['skill']}〉 目標値：{result['target']}\n"
             f"理由：{result['reason']}\n"
             f"よろしいですか？"

@@ -31,20 +31,22 @@ SCENARIO_DRAFT_SCHEMA = {
             "goal": {"type": "string"},
             "chapters": {
                 "type": "array",
-                "minItems": 3,  # short でも最低3章
+                "minItems": 2,
                 "maxItems": 10,
                 "items": {
                     "type": "object",
                     "properties": {
                         "title": {"type": "string"},
+                        "goal":{"type": "string"},
                         "overview": {"type": "string","minLength": 100}
                     },
-                    "required": ["title", "overview"],
+                    "required": ["title", "goal", "overview"],
                     "additionalProperties": False
                 }
             },
             "canon_facts": {
                 "type": "array",
+                "maxItems": 5,
                 "items": {
                     "type": "object",
                     "properties": {
@@ -693,7 +695,7 @@ class SessionCreate:
             "",
             f"▶ 合計コスト：{total_cost} / 上限：12pt",
             "",
-            "この内容でキャラクターを作成しますか？(使用しなかったポイントは持ち越せません)",
+            "この内容でキャラクターを作成しますか？(使用しなかったポイントは持ち越せますが、シナリオ終了時まで振り直せません。)",
             "1. はい（確定して保存）",
             "2. いいえ（割り振りをやり直す）"
         ])
@@ -708,6 +710,11 @@ class SessionCreate:
             skills = self.flags.get("_check_assignments", {})
             obj["checks"] = skills
             obj["tags"] = list(set(obj.get("tags", []) + ["PC"]))
+
+            # 余ったポイントを growth_pool に保存
+            total_cost = self._calculate_total_skill_cost(skills)
+            point_limit = 12  # ここは持ち越し対応するなら self.flags.get("_point_limit", 12)
+            obj["growth_pool"] = max(0, point_limit - total_cost)
 
             cm = self.ctx.character_mgr
             cm.set_worldview_id(self.wid)
@@ -774,7 +781,7 @@ class SessionCreate:
         lines.append("・雰囲気（例：明るい、シリアス、陰鬱、コミカル、神秘的など）")
         lines.append("・進行スタイル（例：依頼型、自由探索型、事件解決型など）")
         lines.append("・長さ（以下から選択）")
-        lines.append("　short：3～4章の短編")
+        lines.append("　short：2～4章の短編")
         lines.append("　medium：5〜7章の中編")
         lines.append("　long：8～10章の長編")
 
@@ -984,12 +991,13 @@ class SessionCreate:
                 "■ chapters の出力ルール：",
                 '章構成は "chapters": [ ... ] というリスト形式で出力してください。',
                 "章数は length に応じて決定してください：",
-                " - short：3〜4章",
+                " - short：2〜4章",
                 " - medium：5〜7章",
                 " - long：8章以上",
                 "",
                 "各章は次のような構造です：",
                 '{ "title": "章のタイトル（詩的かつ内容を示唆）",',
+                '  "goal": "その章を終了し、次の章に移る条件。それが最終章なら、最終的に迎えるべきエンディング。目標達成のための手段ではなく、目標そのものにすることを心がけ、かつ自由度を確保するために、ある程度の大雑把さも許容する。",',
                 '  "overview": "プレイヤーが経験する展開（150文字程度）" }',
                 "",
                 "全体を通してプレイヤーキャラの行動が活きるような、かつその時々での行動目標がわかりやすい展開にしてください。セッションの最後の章には山場を用意し、達成感を得られるようにしてください。",
@@ -1009,7 +1017,7 @@ class SessionCreate:
             ]
         system_parts.append(
                 "■ 設定カノン（canon_facts）の出力について：\n"
-                "このシナリオで新たに明らかになる重要な設定（世界観・文化・歴史・信仰・人物背景など）や、キーとなるアイテムがあれば、それらを \"canon_facts\" フィールドとして出力してください。\n"
+                "このシナリオで新たに明らかになる重要な設定（世界観・文化・歴史・信仰・人物背景など）や、キーとなるアイテムがあれば、それらを \"canon_facts\" フィールドとして最大5つまで出力してください。\n"
                 "\n"
                 "形式は以下のようにしてください：\n"
                 "\"canon_facts\": [\n"
@@ -1035,7 +1043,7 @@ class SessionCreate:
                 "    ・その他（上記に当てはまらないが記録すべきもの）\n"
                 "- note: その内容を100字程度で自然文として説明（特にアイテムの場合は、その形や大きさ、具体的な持っている力などをわかりやすく）\n"
                 "\n"
-                "重要な設定が存在しない場合は空リストで構いません。並列記述の上限はありません。**世界観の要素として渡している内容と同等のものは、設定し直さないでください。**混乱の元となります。"
+                "重要な設定が存在しない場合は空リストで構いません。**世界観の要素として渡している内容と同等のものは、設定し直さないでください。**混乱の元となります。"
             )
 
         prompt = [

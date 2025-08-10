@@ -12,11 +12,14 @@ from tkinter import colorchooser, ttk
 from infra.path_helper import get_data_path
 
 DEFAULT_SETTINGS = {
-    "font_family": "Consolas",
+    "font_family": "Meiryo",
     "font_size": 12,
     "text_color": "#ffffff",
-    "bg_color": "#1e1e1e"
+    "bg_color": "#1e1e1e",
+    "player_color": "#ffff00",   # ← 追加: プレイヤーの色（既定は黄色）
+    "player_bold": True          # ← 追加: 太字フラグ
 }
+
 
 def load_ui_settings():
     path = get_data_path("ui_settings.json")
@@ -125,8 +128,18 @@ class MessageConsole:
             lmargin1=0,
             lmargin2=0,
             tabs=("1c",),
-            spacing1=1  # ← 行頭の空白をトリムしないようにする補助
+            spacing1=1
         )
+        self.message_area.tag_config(
+            "player",
+            foreground=self.settings.get("player_color", "#ffff00"),
+            font=(self.settings["font_family"], self.settings["font_size"], "bold"),
+            lmargin1=0,
+            lmargin2=0,
+            tabs=("1c",),
+            spacing1=1
+        )
+
 
 
         self.message_area.pack(side="left", expand=True, fill="both")
@@ -171,9 +184,12 @@ class MessageConsole:
         config_menu.add_command(label="UI設定...", command=self.open_settings_window)
 
     def print_message(self, sender: str, message: str):
-        line = f"-- {message}\n" if sender.lower() in ["user", "player"] else f"{message}\n"
+        is_player = sender and sender.lower() in ["user", "player"]
+        tag = "player" if is_player else "default"
+        line = f"-- {message}\n" if is_player else f"{message}\n"
+
         self.message_area.configure(state='normal')
-        self.message_area.insert('end', line, "default")
+        self.message_area.insert('end', line, tag)
         self.message_area.configure(state='disabled')
         self.message_area.see('end')
 
@@ -271,6 +287,10 @@ class MessageConsole:
         text_color_var = tk.StringVar(value=self.settings["text_color"])
         bg_color_var = tk.StringVar(value=self.settings["bg_color"])
 
+        player_color_var = tk.StringVar(value=self.settings.get("player_color", "#ffff00"))
+        player_bold_var = tk.BooleanVar(value=self.settings.get("player_bold", True))
+
+
         # --- 文字色 ---
         tk.Label(win, text="文字色:").grid(row=2, column=0, sticky="w", padx=10, pady=5)
         text_color_entry = tk.Entry(win, textvariable=text_color_var, width=10)
@@ -297,17 +317,39 @@ class MessageConsole:
 
         tk.Button(win, text="選択", command=choose_bg_color).grid(row=3, column=2, padx=5, pady=5)
 
+        # --- プレイヤー色 ---
+        tk.Label(win, text="プレイヤー色:").grid(row=4, column=0, sticky="w", padx=10, pady=5)
+        player_color_entry = tk.Entry(win, textvariable=player_color_var, width=10)
+        player_color_entry.grid(row=4, column=1, padx=(10, 0), pady=5, sticky="w")
+
+        def choose_player_color():
+            initial_color = player_color_var.get() or "#ffff00"
+            color = colorchooser.askcolor(title="プレイヤー色を選択", initialcolor=initial_color)[1]
+            if color:
+                player_color_var.set(color)
+
+        tk.Button(win, text="選択", command=choose_player_color).grid(row=4, column=2, padx=5, pady=5)
+
+        # --- プレイヤー太字 ---
+        player_bold_chk = tk.Checkbutton(win, text="プレイヤーを太字にする", variable=player_bold_var)
+        player_bold_chk.grid(row=5, column=0, columnspan=3, sticky="w", padx=10, pady=5)
+
+
         def apply():
             self.settings["font_family"] = font_var.get()
             self.settings["font_size"] = int(size_var.get())
             self.settings["text_color"] = text_color_var.get()
             self.settings["bg_color"] = bg_color_var.get()
+            # ↓↓↓ 追加
+            self.settings["player_color"] = player_color_var.get()
+            self.settings["player_bold"] = bool(player_bold_var.get())
+            # ↑↑↑ 追加
             save_ui_settings(self.settings)
             self.apply_settings()
             win.destroy()
 
 
-        tk.Button(win, text="適用", command=apply).grid(row=4, column=0, columnspan=3, pady=15)
+        tk.Button(win, text="適用", command=apply).grid(row=6, column=0, columnspan=4, pady=15)
 
     def apply_settings(self):
         self.font = (self.settings["font_family"], self.settings["font_size"])
@@ -317,6 +359,16 @@ class MessageConsole:
             insertbackground=self.settings["text_color"]
         )
         self.message_area.tag_config("default", foreground=self.settings["text_color"])
+        player_font = (
+            self.settings["font_family"],
+            self.settings["font_size"],
+            "bold" if self.settings.get("player_bold", True) else "normal"
+        )
+        self.message_area.tag_config(
+            "player",
+            foreground=self.settings.get("player_color", "#ffff00"),
+            font=player_font
+        )
 
         self.entry.config(
             font=(self.settings["font_family"], self.settings["font_size"] + 2),
