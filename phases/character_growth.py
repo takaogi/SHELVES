@@ -1,9 +1,9 @@
 import unicodedata
 import copy
+import json
 from infra.path_helper import get_data_path
 
 # 1回の成長フェーズで新規に支給されるポイント（好みで調整OK）
-GROWTH_POOL_PER_PHASE = 6
 
 class CharacterGrowth:
     def __init__(self, ctx, progress_info):
@@ -114,6 +114,7 @@ class CharacterGrowth:
             for k in self.skill_descriptions.keys():
                 base_checks[k] = 0
 
+
         # ベースライン：この成長回で下回れない
         self.flags["_baseline_checks"] = copy.deepcopy(base_checks)
         # 編集中の現在値
@@ -122,10 +123,22 @@ class CharacterGrowth:
         # 成長ポイント：持ち越し＋今回支給
         carry = int(self.character.get("growth_pool", 0) or 0)
         self.flags["_carry_over"] = carry
-        self.flags["_granted"] = GROWTH_POOL_PER_PHASE
-        self.flags["_available_pool"] = carry + GROWTH_POOL_PER_PHASE
 
-        # 現在の消費（デルタに対するコスト合計）
+        sid = self.flags.get("growth_session_id")
+        chapters_count = 6
+        try:
+            scenario_path = get_data_path(f"worlds/{self.wid}/sessions/{sid}/scenario.json")
+            if scenario_path.exists():
+                with open(scenario_path, encoding="utf-8") as f:
+                    scenario = json.load(f)
+                chapters = scenario.get("draft", {}).get("chapters", [])
+                if chapters:
+                    chapters_count = len(chapters)
+        except Exception as e:
+            print(f"[WARN] チャプター数取得失敗: {e}")
+
+        self.flags["_granted"] = chapters_count
+        self.flags["_available_pool"] = carry + chapters_count
         self.flags["_spent"] = 0
 
     def _tri_cost(self, k: int) -> int:
@@ -139,8 +152,12 @@ class CharacterGrowth:
     def _calc_spent(self, cur: dict, base: dict) -> int:
         total = 0
         for name, base_v in base.items():
-            dv = int(cur.get(name, 0)) - int(base_v)
-            total += self._tri_cost(dv)
+            # 現在値の累計コスト
+            total_cost_now = self._tri_cost(int(cur.get(name, 0)))
+            # ベースライン分の累計コスト（無料部分）
+            total_cost_base = self._tri_cost(int(base_v))
+            # 差額だけポイント消費
+            total += max(0, total_cost_now - total_cost_base)
         return total
 
     def _render_distribution(self) -> str:
