@@ -1167,7 +1167,7 @@ class SessionCreate:
                 schema=SCENARIO_DRAFT_SCHEMA
             )
             scenario = result if isinstance(result, dict) else {}
-            total_chapters = len(scenario.get("draft", {}).get("chapters", []))
+            total_chapters = len(scenario.get("chapters", []))
             scenario["total_chapters"] = total_chapters
             self.flags["_scenario_draft"] = scenario
             return self.progress_info, "シナリオ構成を生成しました。"
