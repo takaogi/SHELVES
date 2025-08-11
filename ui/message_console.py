@@ -97,7 +97,7 @@ class MessageConsole:
         self.font = (self.settings["font_family"], self.settings["font_size"])
 
         self.root = tk.Tk()
-        self.root.title("Prologue - Message Console")
+        self.root.title("S.H.E.L.V.E.S. - Message Console")
         self.root.geometry("1000x700")
         self.root.configure(bg=self.settings["bg_color"])
 
