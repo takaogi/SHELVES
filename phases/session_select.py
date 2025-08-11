@@ -33,7 +33,12 @@ class SessionSelect:
         for i, s in enumerate(sessions, start=1):
             title = s.get('title', '(タイトル未設定)')
             status = s.get('status', '?')
-            lines.append(f"{i}. {title} [{status}]")
+            total_chapters = s.get('total_chapters')
+            if total_chapters:
+                lines.append(f"{i}. {title} [{status}] / 全{total_chapters}章")
+            else:
+                lines.append(f"{i}. {title} [{status}]")
+
         lines.append(f"{len(sessions)+1}. 新しいセッションを作成する")
 
         self.progress_info["step"] = 1
@@ -55,13 +60,18 @@ class SessionSelect:
 
             title = selected.get("title", "(タイトル未設定)")
             status = selected.get("status", "?")
-            lines = [
-                f"選択: 『{title}』 [{status}]",
-                "次の操作を選んでください：",
-                "1. セッションを再開する",
-                "2. このセッションを削除する",
-                "3. 一覧に戻る"
-            ]
+            total_chapters = selected.get("total_chapters")
+
+            lines = [f"選択: 『{title}』 [{status}]"]
+
+            if total_chapters:
+                lines.append(f"全{total_chapters}章構成")
+
+            lines.append("次の操作を選んでください：")
+            lines.append("1. セッションを再開する")
+            lines.append("2. このセッションを削除する")
+            lines.append("3. 一覧に戻る")
+
             self.progress_info["step"] = 2
             return self.progress_info, "\n".join(lines)
 
