@@ -143,6 +143,7 @@ class ScenarioHandler:
                     self.convlog.summarize_now()
                 except Exception as e:
                     self.ctx.logger.warning(f"[ScenarioHandler] 章切り替え時の要約に失敗: {e}")
+        
         self.state.chapter += 1
         self.state.section = 0
         chapter = self.state.chapter
