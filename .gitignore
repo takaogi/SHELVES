@@ -32,4 +32,5 @@ temp/
 
 # Secrets / keys
 resources/api_key.txt
+resources/icon.ico
 git.txt
