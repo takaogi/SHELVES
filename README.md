@@ -1,4 +1,4 @@
-# SHELVES
+# S.H.E.L.V.E.S.
 ド素人によるソロTRPG用AI WIP  
 chatGPTによるコーディングに期待するなよ！！  
 openAIのAPI-Keyが要るよ！！  
