@@ -24,6 +24,13 @@ NPCには積極的に発言させてください。進行中に新たにNPCを�
 """
 
 PRE_PROMPT_SNIPPETS = {
+    "scenario": (
+    "【今回のシナリオ設定】\n"
+    "主題: {theme}\n"
+    "雰囲気: {tone}\n"
+    "進行スタイル: {style}\n"
+    "**これに従った進行を心がけてください。**"
+),
     "worldview": "この世界は以下のような特徴を持っています：\n{worldview}",
     "character": "PCの情報：\n{character}",
     "nouns": "世界観内の重要な固有名詞（地名・人物・設定など）：\n{nouns}",
@@ -32,11 +39,11 @@ PRE_PROMPT_SNIPPETS = {
 }
 
 PRE_SNIPPET_KEYS_MAP = {
-    "action": ["worldview", "character", "nouns", "canon", "plan"],
-    "info_request": ["worldview", "character", "nouns", "canon", "plan"],
-    "talk": ["worldview", "character", "nouns", "canon", "plan"],
-    "gm_query": ["worldview", "character", "nouns", "canon", "plan"],
-    "other": ["worldview", "character", "nouns", "canon", "plan"],
+    "action": ["scenario", "worldview", "character", "nouns", "canon", "plan"],
+    "info_request": ["scenario", "worldview", "character", "nouns", "canon", "plan"],
+    "talk": ["scenario", "worldview", "character", "nouns", "canon", "plan"],
+    "gm_query": ["scenario", "worldview", "character", "nouns", "canon", "plan"],
+    "other": ["scenario", "worldview", "character", "nouns", "canon", "plan"],
 }
 
 INTENT_PROMPTS = {
@@ -323,8 +330,7 @@ class IntentHandler:
         if intro:
             instruction += f"\nセクションの導入情報（必ず参考にしてください）: {intro}"
 
-        # worldview / character / nouns / canon / plan を前提文として付与
-        pre_keys = ["worldview", "character", "nouns", "canon", "plan"]
+        pre_keys = ["scenario","worldview", "character", "nouns", "canon", "plan"]
         for key in pre_keys:
             snippet = self._render_pre_snippet(key)
             if snippet.strip():
@@ -438,10 +444,44 @@ class IntentHandler:
         sid = self.state.session_id
         chapter = self.state.chapter
 
-        if key == "worldview":
-            worldview = self.ctx.worldview_mgr.get_entry_by_id(wid)
+        if key == "scenario":
+
+            scenario_path = get_data_path(f"worlds/{self.wid}/sessions/{self.sid}/scenario.json")
+            theme = tone = style = "（未設定）"
+            if scenario_path.exists():
+                with open(scenario_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                meta = data.get("meta", {})
+                theme = meta.get("theme", theme)
+                tone = meta.get("tone", tone)
+                style = meta.get("style", style)
+
+            return PRE_PROMPT_SNIPPETS["scenario"].format(
+                theme=theme,
+                tone=tone,
+                style=style
+            )
+
+        elif key == "worldview":
+            worldview = self.ctx.worldview_mgr.get_entry_by_id(wid) or {}
             long_desc = worldview.get("long_description") or worldview.get("description", "")
-            return PRE_PROMPT_SNIPPETS["worldview"].format(worldview=long_desc.strip())
+            tone = worldview.get("tone", "")
+            genre = worldview.get("genre", "")
+            
+            # 追加情報組み立て
+            extra_info = []
+            if genre:
+                extra_info.append(f"ジャンル: {genre}")
+            if tone:
+                extra_info.append(f"トーン: {tone}")
+            
+            # PRE_PROMPT_SNIPPETS に渡す文章
+            full_desc = long_desc.strip()
+            if extra_info:
+                full_desc += "\n" + " / ".join(extra_info)
+
+            return PRE_PROMPT_SNIPPETS["worldview"].format(worldview=full_desc)
+
 
         elif key == "character":
             session = self.ctx.session_mgr.get_entry_by_id(sid)
@@ -599,7 +639,7 @@ class IntentHandler:
 
 
         # 状況把握用の pre_snippet を付ける
-        pre_keys = ["worldview", "character", "nouns", "canon", "plan"]
+        pre_keys = ["scenario","worldview", "character", "nouns", "canon", "plan"]
         pre_extra = "\n\n".join(self._render_pre_snippet(k) for k in pre_keys)
 
         if pre_extra:
@@ -674,7 +714,7 @@ class IntentHandler:
             "ですが逆に、低レベルのキャラが強敵に挑む場合は、成功した場合は十分な決定打を与えても構いません。\n"
         )
 
-        pre_keys = ["worldview", "character", "nouns", "canon", "plan"]
+        pre_keys = ["scenario","worldview", "character", "nouns", "canon", "plan"]
         pre_extra = "\n\n".join(self._render_pre_snippet(k) for k in pre_keys)
         if pre_extra:
             system_prompt += "\n\n" + pre_extra

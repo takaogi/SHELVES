@@ -1,6 +1,9 @@
 # ai/chat_engine.py
 import json
 import re
+import os
+import uuid
+from datetime import datetime
 from openai import OpenAI
 
 from infra.logging import get_logger
@@ -9,6 +12,111 @@ log = get_logger("ChatEngine")
 
 def _strip_think(text: str) -> str:
     return re.sub(r"<think[\s\S]*?</think\s*>", "", text, flags=re.IGNORECASE)
+
+def _resolve_chatlog_dir() -> str:
+    try:
+        # infra/path_helper.py に get_data_path がある想定
+        from infra.path_helper import get_data_path  # type: ignore
+        base = get_data_path("temp/debug/chatlog")
+    except Exception:
+        base = os.path.join("data", "temp", "debug", "chatlog")
+    os.makedirs(base, exist_ok=True)
+    return base
+def _safe_write(path: str, data: str | bytes) -> None:
+    tmp = path + ".tmp"
+    mode = "wb" if isinstance(data, (bytes, bytearray)) else "w"
+    with open(tmp, mode, encoding=None if "b" in mode else "utf-8") as f:
+        f.write(data)
+    os.replace(tmp, path)
+
+
+# 追加：チャットログ保存
+def _dump_chatlog(
+    *,
+    caller_name: str,
+    model: str,
+    model_level: str | None,
+    max_tokens: int,
+    messages: list[dict],
+    raw_text: str | None,
+    stripped_text: str | None,
+    usage_all: dict | None,
+    schema_used: bool,
+    parsed_object: dict | None = None,
+) -> tuple[str, str]:
+    base_dir = _resolve_chatlog_dir()
+    now = datetime.now()
+    ts = now.strftime("%Y%m%d_%H%M%S_%f")[:-3]  # ミリ秒まで
+    rid = uuid.uuid4().hex[:6]
+    stem = f"{ts}_{(caller_name or 'Unknown')}_{rid}"
+
+    # JSON本体
+    record = {
+        "timestamp": now.isoformat(timespec="milliseconds"),
+        "caller": caller_name,
+        "model": model,
+        "model_level": model_level,
+        "max_output_tokens": max_tokens,
+        "schema_used": schema_used,
+        "request": {
+            "messages": messages,  # system/user/assistant をそのまま
+        },
+        "response": {
+            "raw_text": raw_text,
+            "stripped_text": stripped_text,
+            "parsed_object": parsed_object,  # schema時のみ
+        },
+        "usage_all": usage_all,
+    }
+
+    json_path = os.path.join(base_dir, f"{stem}.json")
+    _safe_write(json_path, json.dumps(record, ensure_ascii=False, indent=2))
+
+    # 人向けテキスト（ざっと俯瞰したい時用）
+    lines = []
+    lines.append(f"[time]   {record['timestamp']}")
+    lines.append(f"[caller] {caller_name}")
+    lines.append(f"[model]  {model}  (level={model_level}, max={max_tokens})")
+    lines.append(f"[schema] {schema_used}")
+    lines.append("\n=== REQUEST MESSAGES ===")
+    for i, m in enumerate(messages, 1):
+        role = m.get("role", "?")
+        content = m.get("content", "")
+        # content が list 構造の Responses API 形式でも、見やすく出す
+        if isinstance(content, list):
+            try:
+                content_str = json.dumps(content, ensure_ascii=False)
+            except Exception:
+                content_str = str(content)
+        else:
+            content_str = str(content)
+        lines.append(f"\n[{i}] role={role}\n{content_str}")
+
+    lines.append("\n=== RESPONSE ===")
+    if schema_used and parsed_object is not None:
+        try:
+            lines.append(json.dumps(parsed_object, ensure_ascii=False, indent=2))
+        except Exception:
+            lines.append(str(parsed_object))
+    if raw_text is not None:
+        lines.append("\n-- raw_text --")
+        lines.append(raw_text)
+    if stripped_text is not None and stripped_text != raw_text:
+        lines.append("\n-- stripped_text --")
+        lines.append(stripped_text)
+
+    # usage
+    if usage_all is not None:
+        lines.append("\n=== USAGE (ALL) ===")
+        try:
+            lines.append(json.dumps(usage_all, ensure_ascii=False, indent=2))
+        except Exception:
+            lines.append(str(usage_all))
+
+    txt_path = os.path.join(base_dir, f"{stem}.txt")
+    _safe_write(txt_path, "\n".join(lines))
+
+    return json_path, txt_path
 
 # 1) 先頭付近に追加
 def _usage_to_jsonable(obj, _depth=0):
@@ -168,14 +276,55 @@ class ChatEngine:
             log.info(f"[{caller_name}] Responses API 受信")
             #log.info(f"[{caller_name}] 応答テキスト: {text[:500]}{'...' if len(text) > 500 else ''}")
 
+
+            # ▼▼▼ ここから保存処理 ▼▼▼
             if schema:
+                parsed = None
                 try:
-                    return json.loads(text)
+                    parsed = json.loads(text)
                 except Exception:
                     log.warning(f"[{caller_name}] JSONパース失敗: {text[:200]}")
-                    return text
+                # JSON/テキスト両方吐く（parsed は None でもOK）
+                try:
+                    jpath, tpath = _dump_chatlog(
+                        caller_name=caller_name,
+                        model=model,
+                        model_level=model_level,
+                        max_tokens=max_tokens,
+                        messages=msgs,
+                        raw_text=text,
+                        stripped_text=None if text is None else _strip_think(text),
+                        usage_all=usage_all,
+                        schema_used=True,
+                        parsed_object=parsed,
+                    )
+                    log.info(f"[{caller_name}] chatlog saved: {jpath} / {tpath}")
+                except Exception as e:
+                    log.warning(f"[{caller_name}] chatlog 保存失敗: {e}")
+
+                # 返却
+                return parsed if parsed is not None else text
+
             else:
-                return _strip_think(text)
+                stripped = None if text is None else _strip_think(text)
+                try:
+                    jpath, tpath = _dump_chatlog(
+                        caller_name=caller_name,
+                        model=model,
+                        model_level=model_level,
+                        max_tokens=max_tokens,
+                        messages=msgs,
+                        raw_text=text,
+                        stripped_text=stripped,
+                        usage_all=usage_all,
+                        schema_used=False,
+                        parsed_object=None,
+                    )
+                    log.info(f"[{caller_name}] chatlog saved: {jpath} / {tpath}")
+                except Exception as e:
+                    log.warning(f"[{caller_name}] chatlog 保存失敗: {e}")
+
+                return stripped
         except Exception as e:
             log.exception(f"[{caller_name}] Responses API 応答エラー: {e}")
             return "API応答中にエラーが発生しました。"
