@@ -387,6 +387,7 @@ class WorldviewCreate:
 
     def _handle_auto_description(self, input_text: str):
         genres = ["ファンタジー", "SF", "スチームパンク", "ポストアポカリプス", "現代異能", "歴史改変"]
+        random.shuffle(genres)
         periods = ["古代", "中世", "近代", "現代", "近未来", "遠未来"]
         tones = ["明るい", "ダーク", "混沌", "秩序", "静寂", "戦乱"]
         shapes = ["大陸", "島嶼", "宇宙都市", "多次元", "地下世界", "天空国家"]
@@ -398,6 +399,7 @@ class WorldviewCreate:
             f"時代候補：{', '.join(periods)}\n"
             f"雰囲気候補：{', '.join(tones)}\n"
             f"地理形状候補：{', '.join(shapes)}\n\n"
+            "候補はあくまで例です。必ず候補外の語も含めて検討し、最も適したものを選んでください。\n"
             "出力は与えられた JSON Schema（genre, period, tone, world_shape, name, description）に**厳密**に従ってください。\n"
             "・各値は日本語で簡潔に。\n"
             "・name は世界観の名称です。\n"
@@ -425,7 +427,7 @@ class WorldviewCreate:
             caller_name="AutoWorldview",
             model_level="high",
             schema=WORLDVIEW_SCHEMA,
-            max_tokens=2000,
+            max_tokens=3000,
         )
 
 

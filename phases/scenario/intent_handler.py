@@ -354,10 +354,16 @@ class IntentHandler:
         messages = [{"role": "system", "content": instruction}]
         messages += self.convlog.get_slim()
 
+        # 🔽 ここを条件付きに変更
+        if kind == "chapter":
+            model_level = "Very_high"
+        else:
+            model_level = "high"
+
         response = self.ctx.engine.chat(
             messages=messages,
             caller_name=f"IntentHandler:{kind}_intro",
-            model_level="Very_high",
+            model_level=model_level,
             max_tokens=20000
         )
 

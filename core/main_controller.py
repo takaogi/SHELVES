@@ -11,8 +11,9 @@ from phases.session_create import SessionCreate
 from phases.character_growth import CharacterGrowth
 
 class MainController:
-    def __init__(self, context: AppContext):
+    def __init__(self, context: AppContext, debug: bool = False):
         self.ctx = context
+        self.debug = debug
         self._scenario_handler = None
 
     def step(self, progress_info: dict, player_input: str) -> tuple[dict, str]:
@@ -21,9 +22,9 @@ class MainController:
         if phase == "scenario":
             if not self._scenario_handler:
                 from phases.scenario_handler import ScenarioHandler
-                self._scenario_handler = ScenarioHandler(self.ctx, progress_info)
+                self._scenario_handler = ScenarioHandler(self.ctx, progress_info, debug=self.debug)
             return self._scenario_handler.handle(player_input)
-
+        
         else:
             self._scenario_handler = None
 

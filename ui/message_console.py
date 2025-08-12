@@ -10,6 +10,7 @@ import json
 
 from tkinter import colorchooser, ttk
 from infra.path_helper import get_data_path
+from infra.logging import get_logger
 
 DEFAULT_SETTINGS = {
     "font_family": "Meiryo",
@@ -95,6 +96,7 @@ class MessageConsole:
     def __init__(self):
         self.settings = load_ui_settings()
         self.font = (self.settings["font_family"], self.settings["font_size"])
+        self.log = get_logger("UI")
 
         self.root = tk.Tk()
         self.root.title("S.H.E.L.V.E.S. - Message Console")
@@ -214,8 +216,8 @@ class MessageConsole:
     def _on_enter_text(self, event):
         if event.state & 0x0001:
             return
-        value = self.entry.get("1.0", "end-1c")
-        print(f"[DEBUG] 入力値 repr: {repr(value)}")
+        value = self.entry.get("1.0", "end-1c") 
+        self.log.debug(f"[InputRaw] repr={repr(value)}")
 
         if value and self.input_callback:
             self.entry.delete("1.0", "end")
