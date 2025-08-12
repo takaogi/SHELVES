@@ -168,7 +168,7 @@ class ScenarioHandler:
         self.state.save()
 
         title = plan.get("title", "")
-        heading = f"第{chapter}章「{title}」を開始します。" if title else f"第{chapter}章を開始します。"
+        heading = f"\n第{chapter}章「{title}」を開始します。\n" if title else f"\n第{chapter}章を開始します。\n"
 
         self.flags["intent"] = "chapter_intro"
         self.progress_info["step"] = 1100
@@ -215,10 +215,10 @@ class ScenarioHandler:
 
     def _intent_router(self, player_input: str) -> tuple[dict, str]:
         # 🔹 デバッグ用：end と入力されたら即終了ステップへ
-        #if player_input.strip().lower() == "end":
-        #    self.progress_info["step"] = 9999
-        #    self.progress_info["auto_continue"] = True
-        #    return self.progress_info, "【デバッグ】シナリオ終了処理へ移行します。"
+        if player_input.strip().lower() == "end":
+            self.progress_info["step"] = 9999
+            self.progress_info["auto_continue"] = True
+            return self.progress_info, "【デバッグ】シナリオ終了処理へ移行します。"
         
         if self.flags.get("intent") in ("section_intro", "chapter_intro"):
             self.progress_info["step"] = 2010

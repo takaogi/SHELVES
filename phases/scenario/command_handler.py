@@ -1,10 +1,12 @@
 # phases/scenario/command_handler.py
+from infra.logging import get_logger
 
 class CommandHandler:
     def __init__(self, ctx, wid, sid):
         self.ctx = ctx
         self.wid = wid
         self.sid = sid
+        self.log = get_logger("CommandHandler")
 
     def execute(self, command: str, args: list[str], chapter: int = 0):
         if command == "add_item" and len(args) == 1:
@@ -13,6 +15,10 @@ class CommandHandler:
             return self._remove_item(args[0])
         elif command == "add_history" and len(args) == 2:
             return self._add_history(args[0], args[1], chapter)
+        elif command == "create_canon" and len(args) >= 3:
+            return self._create_canon(args[0], args[1], args[2], chapter)
+        else:
+            self.log.warning(f"未対応または不正なコマンド: {command} {args}")
         return False
 
     # --- helpers ---
@@ -28,30 +34,38 @@ class CommandHandler:
         cm = self.ctx.character_mgr
         pcid = self._get_player_character_id()
         if not pcid:
+            self.log.warning(f"アイテム追加失敗（PC未設定）: {item_name}")
             return False
 
         char = cm.load_character_file(pcid)
         items = char.setdefault("items", [])
         if item_name not in items:
             items.append(item_name)
+            self.log.info(f"アイテム追加: {item_name} → PC={pcid}")
+        else:
+            self.log.info(f"アイテム追加スキップ（既に所持）: {item_name} → PC={pcid}")
         char["items"] = items
 
-        cm.save_character_file(pcid, char)  # ← 正しいシグネチャ
+        cm.save_character_file(pcid, char)
         return True
 
     def _remove_item(self, item_name: str):
         cm = self.ctx.character_mgr
         pcid = self._get_player_character_id()
         if not pcid:
+            self.log.warning(f"アイテム削除失敗（PC未設定）: {item_name}")
             return False
 
         char = cm.load_character_file(pcid)
         items = char.get("items", [])
         if item_name in items:
             items.remove(item_name)
+            self.log.info(f"アイテム削除: {item_name} → PC={pcid}")
+        else:
+            self.log.info(f"アイテム削除スキップ（未所持）: {item_name} → PC={pcid}")
         char["items"] = items
 
-        cm.save_character_file(pcid, char)  # ← 正しいシグネチャ
+        cm.save_character_file(pcid, char)
         return True
 
     # --- canon ops ---
@@ -59,11 +73,34 @@ class CommandHandler:
         canon_mgr = self.ctx.canon_mgr
         canon_mgr.set_context(self.wid, self.sid)
 
-        # 既存を名前検索 → あれば追記、なければ新規作成
         entry = next((e for e in canon_mgr.entries if e.get("name") == canon_name), None)
         if entry:
-            canon_mgr.append_history(entry["id"], text, chapter)
+            try:
+                canon_mgr.append_history(entry["id"], text, chapter)
+                self.log.info(f"カノン履歴追加: {canon_name}（ch={chapter}）")
+            except Exception as e:
+                self.log.error(f"カノン履歴追加失敗: {canon_name}（ch={chapter}）: {e}")
+                return False
         else:
-            canon_mgr.create_fact(canon_name, "fact", text, chapter)
+            # 履歴追加対象が存在しない → type不明で新規作成としてフォールバック
+            try:
+                canon_mgr.create_fact(canon_name, "unknown", text, chapter)
+                self.log.warning(f"カノン履歴追加失敗（未登録）→ type=unknown で新規作成: {canon_name}（ch={chapter}）")
+            except Exception as e:
+                self.log.error(f"カノン新規作成（フォールバック）失敗: {canon_name}（type=unknown, ch={chapter}）: {e}")
+                return False
 
         return True
+
+
+
+    def _create_canon(self, name: str, typ: str, notes: str, chapter: int):
+        canon_mgr = self.ctx.canon_mgr
+        canon_mgr.set_context(self.wid, self.sid)
+        try:
+            canon_mgr.create_fact(name, typ, notes, chapter)
+            self.log.info(f"カノン作成: {name}（type={typ}, ch={chapter}）")
+            return True
+        except Exception as e:
+            self.log.warning(f"カノン作成失敗: {name}（type={typ}）: {e}")
+            return False

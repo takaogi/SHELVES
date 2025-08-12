@@ -55,17 +55,17 @@ class SessionResume:
             self.progress_info["step"] = 1
             return self.progress_info, (
                 f"セッション『{title}』はすでに終了しています。\n"
-                "このセッションの続編として新しいセッションを開始しますか？（はい／いいえ）"
+                "このセッションの続編として新しいセッションを開始しますか？\n"
+                "1. 開始する\n"
+                "2. 戻る"
             )
-
         else:
             return self._fail("指定されたセッションは存在しないか、再開できません。")
 
-
     def _handle_continuation_decision(self, input_text: str) -> tuple[dict, str]:
-        text = unicodedata.normalize("NFKC", input_text.strip())
+        choice = unicodedata.normalize("NFKC", input_text.strip())
 
-        if text in ("はい", "はい。", "yes", "y", "うん"):
+        if choice == "1":
             old_sid = self.flags["id"]
             wid = self.flags.get("worldview_id")
 
@@ -90,10 +90,16 @@ class SessionResume:
             self.progress_info["auto_continue"] = True
             return self.progress_info, "続編セッションの作成を開始します。"
 
+        elif choice == "2":
+            # セッション選択フェーズへ戻す
+            self.progress_info["phase"] = "session_select"
+            self.progress_info["step"] = 0
+            self.progress_info["auto_continue"] = True
+            return self.progress_info, "続編作成を中止しました。セッション選択に戻ります。\n"
 
 
         else:
-            return self._fail("セッションの再開は中止されました。")
+            return self.progress_info, "無効な入力です。1 または 2 を選んでください。"
 
     def _fail(self, message: str) -> tuple[dict, str]:
         self.progress_info["phase"] = "prologue"

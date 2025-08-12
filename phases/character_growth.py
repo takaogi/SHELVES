@@ -397,7 +397,7 @@ class CharacterGrowth:
         self.progress_info["step"] = 0
         self.progress_info["flags"] = {}
         self.progress_info["auto_continue"] = True
-        return self.progress_info, "キャラクター成長フェーズを終了します。"
+        return self.progress_info, "キャラクター成長フェーズを終了します。\n\n"
 
     #==================================================
     # 既存の履歴生成ロジック

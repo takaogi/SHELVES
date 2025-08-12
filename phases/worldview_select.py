@@ -54,7 +54,7 @@ class WorldviewSelect:
             message = (
                 f"本棚『{name}』を選びました。どうしますか？\n"
                 "1. セッション一覧を見る\n"
-                "2. 世界観を編集する\n"
+                "2. 世界観を編集する(WIP dataファイルを自分で編集したほうが100倍速い)\n"
                 "3. 戻る"
             )
             return self.progress_info, message

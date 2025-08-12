@@ -154,8 +154,11 @@ class SessionManager(BaseManager):
             return False
 
     def get_summary_path(self, worldview_id: str, session_id: str) -> Path:
-        return get_data_path(f"worlds/{worldview_id}/sessions/{session_id}/previous_summary.txt")
-    
+        prev = get_data_path(f"worlds/{worldview_id}/sessions/{session_id}/previous_summary.txt")
+        if prev.exists():
+            return prev
+        return get_data_path(f"worlds/{worldview_id}/sessions/{session_id}/summary.txt")
+
     def save_scenario_data(self, worldview_id: str, session_id: str, meta: dict, draft: dict, raw_input: str = "") -> None:
         base_dir = get_data_path(f"worlds/{worldview_id}/sessions/{session_id}")
         base_dir.mkdir(parents=True, exist_ok=True)
