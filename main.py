@@ -1,5 +1,5 @@
 # main.py
-
+import argparse
 import shutil
 import threading
 import time
@@ -18,7 +18,7 @@ from core.canon_manager import CanonManager
 from ai.chat_engine import ChatEngine
 
 from infra.path_helper import get_data_path, get_resource_path
-from infra.logging import get_logger
+from infra.logging import get_logger, set_debug_enabled
 from infra.net_status import check_online
 
 log = get_logger("Main")
@@ -38,11 +38,19 @@ def _show_offline_and_wait(ui: MessageConsole, controller: MainController, progr
 
     ui.wait_for_input(retry)
 
-
 def clean_temp_folder():
     temp_path = get_data_path("temp")
-    if temp_path.exists():
-        shutil.rmtree(temp_path)
+    temp_path.mkdir(parents=True, exist_ok=True)  # 必ず存在する状態にする
+
+    for item in temp_path.iterdir():
+        try:
+            if item.is_dir():
+                shutil.rmtree(item, ignore_errors=True)
+            else:
+                item.unlink(missing_ok=True)
+        except Exception as e:
+            log.warning(f"[Temp Clean] {item} の削除失敗: {e}")
+
 
 
 def run_loop(ui: MessageConsole, controller: MainController, progress_info: dict, last_input: str = ""):
@@ -106,8 +114,13 @@ def run_loop(ui: MessageConsole, controller: MainController, progress_info: dict
     ui.start_spinner()
     threading.Thread(target=loop, daemon=True).start()
 
-
 def main():
+    # 起動オプション解析
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
+    args = parser.parse_args()
+    set_debug_enabled(args.debug)
+
     clean_temp_folder()
 
     ui = MessageConsole()
@@ -121,7 +134,10 @@ def main():
     state.reset()
 
     ctx = AppContext(
-        engine=ChatEngine(api_key_path=get_resource_path("resources/api_key.txt")),
+        engine=ChatEngine(
+            api_key_path=get_resource_path("resources/api_key.txt"),
+            debug=args.debug
+        ),
         ui=ui,
         state=state,
         worldview_mgr=WorldviewManager(),
@@ -130,6 +146,9 @@ def main():
         nouns_mgr=NounsManager(),
         canon_mgr=CanonManager()
     )
+
+    if args.debug:
+        ui.safe_print("System", "［Debug］デバッグモード有効")
 
     controller = MainController(ctx)
 

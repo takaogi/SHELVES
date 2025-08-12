@@ -7,7 +7,7 @@ from pathlib import Path
 from infra.path_helper import get_resource_path
 
 LOG_PATH = get_resource_path("data/SHELVES.log")
-_current_level = logging.DEBUG
+_current_level = logging.INFO
 
 
 def setup_logging(level=None):

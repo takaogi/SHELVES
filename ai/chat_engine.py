@@ -29,6 +29,9 @@ def _safe_write(path: str, data: str | bytes) -> None:
         f.write(data)
     os.replace(tmp, path)
 
+def _sanitize_filename(s: str) -> str:
+    # Windows禁止文字 <>:"/\|?* をすべて _
+    return re.sub(r'[<>:"/\\|?*]', '_', s)
 
 # 追加：チャットログ保存
 def _dump_chatlog(
@@ -48,7 +51,8 @@ def _dump_chatlog(
     now = datetime.now()
     ts = now.strftime("%Y%m%d_%H%M%S_%f")[:-3]  # ミリ秒まで
     rid = uuid.uuid4().hex[:6]
-    stem = f"{ts}_{(caller_name or 'Unknown')}_{rid}"
+    safe_caller = _sanitize_filename(caller_name or 'Unknown')
+    stem = f"{ts}_{safe_caller}_{rid}"
 
     # JSON本体
     record = {
@@ -118,7 +122,6 @@ def _dump_chatlog(
 
     return json_path, txt_path
 
-# 1) 先頭付近に追加
 def _usage_to_jsonable(obj, _depth=0):
     """resp.usage のような pydantic/SDK オブジェクトでも壊れずにJSON化する"""
     if _depth > 4:
@@ -192,13 +195,17 @@ class ChatEngine:
     - ローカルLLM対応・ネットワーク検出・Ollama起動などは全て削除
     - 既存の呼び出し側( chat(prompt=...) / chat(messages=...) )はそのまま動作
     """
-    def __init__(self, api_key_path: str | None = None):
+# chat_engine.py 抜粋
+class ChatEngine:
+    def __init__(self, api_key_path: str, debug: bool = False):
         if not api_key_path:
             raise ValueError("APIキーのパスを指定してください。")
         with open(api_key_path, "r", encoding="utf-8") as f:
             api_key = f.read().strip()
         self.client = OpenAI(api_key=api_key)
-        log.info("ChatEngine: 初期化しました。")
+
+        self.debug = debug
+        log.info(f"ChatEngine: 初期化しました（debug={self.debug}）")
 
     def chat(
         self,
@@ -276,55 +283,61 @@ class ChatEngine:
             log.info(f"[{caller_name}] Responses API 受信")
             #log.info(f"[{caller_name}] 応答テキスト: {text[:500]}{'...' if len(text) > 500 else ''}")
 
-
-            # ▼▼▼ ここから保存処理 ▼▼▼
+            # ▼▼▼ 保存と返却処理を分離 ▼▼▼
             if schema:
                 parsed = None
                 try:
                     parsed = json.loads(text)
                 except Exception:
                     log.warning(f"[{caller_name}] JSONパース失敗: {text[:200]}")
-                # JSON/テキスト両方吐く（parsed は None でもOK）
-                try:
-                    jpath, tpath = _dump_chatlog(
-                        caller_name=caller_name,
-                        model=model,
-                        model_level=model_level,
-                        max_tokens=max_tokens,
-                        messages=msgs,
-                        raw_text=text,
-                        stripped_text=None if text is None else _strip_think(text),
-                        usage_all=usage_all,
-                        schema_used=True,
-                        parsed_object=parsed,
-                    )
-                    log.info(f"[{caller_name}] chatlog saved: {jpath} / {tpath}")
-                except Exception as e:
-                    log.warning(f"[{caller_name}] chatlog 保存失敗: {e}")
 
-                # 返却
+                # デバッグ時だけ保存
+                if self.debug:
+                    try:
+                        jpath, tpath = _dump_chatlog(
+                            caller_name=caller_name,
+                            model=model,
+                            model_level=model_level,
+                            max_tokens=max_tokens,
+                            messages=msgs,
+                            raw_text=text,
+                            stripped_text=None if text is None else _strip_think(text),
+                            usage_all=usage_all,
+                            schema_used=True,
+                            parsed_object=parsed,
+                        )
+                        log.info(f"[{caller_name}] chatlog saved: {jpath} / {tpath}")
+                    except Exception as e:
+                        log.warning(f"[{caller_name}] chatlog 保存失敗: {e}")
+
+                # 返却は常に
                 return parsed if parsed is not None else text
 
             else:
                 stripped = None if text is None else _strip_think(text)
-                try:
-                    jpath, tpath = _dump_chatlog(
-                        caller_name=caller_name,
-                        model=model,
-                        model_level=model_level,
-                        max_tokens=max_tokens,
-                        messages=msgs,
-                        raw_text=text,
-                        stripped_text=stripped,
-                        usage_all=usage_all,
-                        schema_used=False,
-                        parsed_object=None,
-                    )
-                    log.info(f"[{caller_name}] chatlog saved: {jpath} / {tpath}")
-                except Exception as e:
-                    log.warning(f"[{caller_name}] chatlog 保存失敗: {e}")
 
+                # デバッグ時だけ保存
+                if self.debug:
+                    try:
+                        jpath, tpath = _dump_chatlog(
+                            caller_name=caller_name,
+                            model=model,
+                            model_level=model_level,
+                            max_tokens=max_tokens,
+                            messages=msgs,
+                            raw_text=text,
+                            stripped_text=stripped,
+                            usage_all=usage_all,
+                            schema_used=False,
+                            parsed_object=None,
+                        )
+                        log.info(f"[{caller_name}] chatlog saved: {jpath} / {tpath}")
+                    except Exception as e:
+                        log.warning(f"[{caller_name}] chatlog 保存失敗: {e}")
+
+                # 常に返却
                 return stripped
+
         except Exception as e:
             log.exception(f"[{caller_name}] Responses API 応答エラー: {e}")
             return "API応答中にエラーが発生しました。"

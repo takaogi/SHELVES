@@ -15,9 +15,10 @@ from phases.scenario.conversation_log import ConversationLog
 from phases.scenario.command_handler import CommandHandler
 
 class ScenarioHandler:
-    def __init__(self, ctx: object, progress_info: dict):
+    def __init__(self, ctx: object, progress_info: dict, debug: bool = False):
         self.ctx = ctx
         self.progress_info = progress_info
+        self.debug = debug
         self.flags = self.progress_info.setdefault("flags", {})
         self.log = get_logger("ScenarioHandler")
 
@@ -214,12 +215,60 @@ class ScenarioHandler:
 
 
     def _intent_router(self, player_input: str) -> tuple[dict, str]:
-        # 🔹 デバッグ用：end と入力されたら即終了ステップへ
-        if player_input.strip().lower() == "end":
-            self.progress_info["step"] = 9999
-            self.progress_info["auto_continue"] = True
-            return self.progress_info, "【デバッグ】シナリオ終了処理へ移行します。"
-        
+        # --- デバッグ専用コマンド（--debug 時のみ有効） ---
+        if getattr(self, "debug", False):
+            cmd = player_input.strip().lower()
+
+            # 進行状況確認系
+            if cmd == "status":
+                state_info = [
+                    "【デバッグ】現在の状態:",
+                    f"- 章: {getattr(self.state, 'chapter', '?')} / セクション: {getattr(self.state, 'section', '?')}",
+                    f"- シーン: {getattr(self.state, 'scene', '(不明)')}",
+                    f"- Intent: {self.flags.get('intent', '(未設定)')}",
+                    f"- Step: {self.progress_info.get('step', '(不明)')}"
+                ]
+                return self.progress_info, "\n".join(state_info)
+
+            elif cmd == "flags":
+                import json
+                try:
+                    flags_str = json.dumps(self.flags, ensure_ascii=False, indent=2)
+                except Exception:
+                    flags_str = str(self.flags)
+                return self.progress_info, f"【デバッグ】Flags 内容:\n{flags_str}"
+
+            # シナリオ終了
+            if cmd == "end":
+                self.progress_info["step"] = 9999
+                self.progress_info["auto_continue"] = True
+                return self.progress_info, "【デバッグ】シナリオ終了処理へ移行します。"
+
+            # セクションスキップ
+            elif cmd == "skipsec":
+                self.progress_info["step"] = 1100
+                self.progress_info["auto_continue"] = True
+                return self.progress_info, "【デバッグ】現在のセクションをスキップしました。"
+
+            # 章スキップ
+            elif cmd == "skipchap":
+                self.progress_info["step"] = 1000
+                self.progress_info["auto_continue"] = True
+                return self.progress_info, "【デバッグ】現在の章をスキップしました。"
+
+            # 章・セクション移動
+            elif cmd.startswith("goto "):
+                try:
+                    chap, sec = cmd.split()[1].split("-")
+                    self.state.chapter = int(chap)
+                    self.state.section = int(sec)
+                    self.state.save()
+                    self.progress_info["step"] = 2000
+                    return self.progress_info, f"【デバッグ】第{chap}章 セクション{sec} へ移動しました。"
+                except Exception:
+                    return self.progress_info, "[デバッグ] goto コマンド形式: goto <章>-<セクション>"
+
+        # --- 通常ルート ---
         if self.flags.get("intent") in ("section_intro", "chapter_intro"):
             self.progress_info["step"] = 2010
             return self.progress_info, None

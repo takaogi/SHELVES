@@ -7,7 +7,6 @@ COMMON_PROMPT = """あなたはソロTRPGの進行役（GM）を務めるAIで�
 以下に示す会話の履歴（AssistantとUserのやりとり）をもとに話の流れを理解し、直近のプレイヤー発言（最後のUserの発言）について、次に行うべきシナリオ進行を、雰囲気よりわかりやすさ優先で、ライトノベルに使われる程度の簡単な語彙で描写してください。
 プレイヤーに提示する文章は、**わかりやすいようあまり固有名詞を使わず（使うときは十分説明付きで）**、ラノベ風の三人称・地の文で常体にしてください。描写はかっこつけず、わかりやすさを優先して説明してください。**雰囲気を壊すようなメタな表現（セクション、章、セクションの目的など）は決して描写しないでください。**
 **「このセクションの目的」に常に注意して進行し、決して目的を飛ばしたり、コマンドによる進行を忘れないようにしてください。**
-また、Assistantによる[end_section]入力ごとにセクションを分けているのですが、この1セクションが短くなりすぎないようにしてください（行為判定を最低1度は行う）。
 基本的に一度に出力する文量は（コマンドを含めず）300字程度を目安にし、エピローグ等の描写時やセクションエンド時等描写を強化したいときは、500字ほどを目安に記述してください。
 これらプロンプトを直接プレイヤーに想起させるような出力は控えてください。
 
@@ -21,6 +20,12 @@ PCの自由意志を妨げるような進行はやめてください（例：不
 基本的に**プレイヤーの発言による行動を優先**し、出した行動案等は誘導以上の意味を持たせないでください。
 
 NPCには積極的に発言させてください。進行中に新たにNPCを登場させた場合は【新規カノンの作成】を忘れないでください。
+
+【進行テンポ規約（必読）】
+- 1つのセクションは、アシスタントの出力を**最低3ターン**（= 3回の返答）行ってからでなければ終了してはならない。
+- セクション中に**最低1回**は〈行為判定〉（[action_check] → 判定結果 → 余韻の描写）を行うこと。※判定の提案と同じ返答内でセクションを終了してはならない。
+- セクションの**最初の返答**では、絶対にセクションの目的を達成しない（達成はしても「準備・前進・兆し」レベルにとどめる）。
+
 """
 
 PRE_PROMPT_SNIPPETS = {
@@ -50,7 +55,7 @@ INTENT_PROMPTS = {
     "action": """
 プレイヤーの発言は、キャラクターの能動的な行為です。
 その内容をもとに状況を描写し、結果を提示してください。
-プレイヤーキャラクターがこれから何をすれば良いのかが自然とわかるように、具体的な背景と直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。
+プレイヤーキャラクターがこれから何をすれば良いのかが自然とわかるように、具体的な背景と直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。1つの行動案ごとに改行し、番号ごとに別行にしてください。
 選択を迫る発言（選択してください、など）はしないでください。提示するだけで構いません。
 **ただし、セクションエンド時（この後[end_section]を出力する場合）は行動案を提示しないでください。**
 セクションを終えるときは、次のセクションがあるなら小休止を取り、次のセクションがなく別の章が始まるのならしっかりと話に区切りをつけ、シナリオの最終セクションならエピローグ描写してから行ってください。
@@ -169,7 +174,15 @@ PCの行動が、PCの能力をもってしても必ずしも成功するとは�
     "end_section": """
 【重要：セクションエンドについて】GM用メモの「セクションの目的」を達成し現在のセクションでやるべきことを終え、次のセクションあるいは章に進む場合
 あるいはセッションを最後までやり終えてシナリオを終了する場合は、話に区切りをつけつつ出力の最後に必ず[end_section]を単独の行で書くこと。
-このとき、行為判定や戦闘判定を促したり、なにかプレイヤーの返答を要求したりしないこと。**選択肢の提示もしないでください。**\
+このとき、行為判定や戦闘判定を促したり、なにかプレイヤーの返答を要求したりしないこと。**選択肢の提示もしないでください。**
+
+【セクション終了ガード】
+次の**3条件を全て満たすときのみ**、出力の最後に `[end_section]` を置いてよい。1つでも満たしていなければ**絶対に** `[end_section]` を出力しない。
+
+(1) 当該セクションでのアシスタント返答回数が3回以上である。
+(2) 当該セクション内で〈行為判定〉を1回以上実施し、その結果を踏まえた描写を**次の返答**で行っている（= 判定と同ターンでは終わらせない）。
+(3) 「目的達成」を明言する前に、**具体的な手順・合図・移行の描写**（小休止、準備のまとめ、現場離脱や到着の様子など）を1段入れている。
+
 """,
 
     "item_control": """
@@ -305,15 +318,16 @@ class IntentHandler:
                     "あなたはTRPGのゲームマスターです。\n"
                     "これは物語の第一章の導入です。物語の始まりとして、舞台や背景、PCがこの物語に関わるきっかけを"
                     "臨場感ある導入で描写してください。読者が物語世界に引き込まれるように、情景・空気感・緊張感をラノベ風に描いてください。\n"
-                    "全文で1000字程度で、最後にPCが何をするか選べるような直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。\n"
-                    "プレイヤーに提示する文章は、**わかりやすいようあまり固有名詞を使わず（使うときは十分説明付きで）**、ラノベ風の三人称・地の文で常体にしてください。描写はかっこつけず、わかりやすさを優先して説明してください。"
+                    "全文で1000字程度で、最後にPCが何をするか選べるような直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。1つの行動案ごとに改行し、番号ごとに別行にしてください。\n"
+                    "プレイヤーに提示する文章は、**わかりやすいようあまり固有名詞を使わず（使うときは十分説明付きで）**、ラノベ風の三人称・地の文で常体にしてください。描写はかっこつけず、わかりやすさを優先して説明してください。\n"
+                    "基本的に、まずはPCの日常の描写を行い、次にシナリオ、章、セクションの目的のうち、一番自然に向かうことのできる目的へ進むことになるきっかけを描写し、行動案で誘導することを推奨します。"
                 )
             else:
                 instruction = (
                     "あなたはTRPGのゲームマスターです。\n"
                     "以下の情報と会話履歴を参考に、新たに始まる章の導入描写を500字程度で提示してください。\n"
                     "プレイヤーキャラクターが今現在どこにいてどのような状況なのかを、具体的に描写してください。\n"
-                    "プレイヤーキャラクターがこれから何をすれば良いのかが自然とわかるように、具体的な背景と、直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。このとき、直前に描写した状況と矛盾しないよう気をつけてください。\n"
+                    "プレイヤーキャラクターがこれから何をすれば良いのかが自然とわかるように、具体的な背景と、直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。1つの行動案ごとに改行し、番号ごとに別行にしてください。\n"
                     "プレイヤーに提示する文章は、**わかりやすいようあまり固有名詞を使わず（使うときは十分説明付きで）**、ラノベ風の三人称・地の文で常体にしてください。描写はかっこつけず、わかりやすさを優先して説明してください。"
                 )
         elif kind == "section":
@@ -321,7 +335,7 @@ class IntentHandler:
                 "あなたはTRPGのゲームマスターです。\n"
                 "以下の情報と会話履歴を参考に、セクションの導入描写を300字程度で提示してください。\n"
                 "直前の描写と自然につながるようにし、プレイヤーキャラクターが今現在どこにいてどのような状況なのかを、具体的に描写してください。\\n"
-                "プレイヤーキャラクターがこれから何をすれば良いのかが自然とわかるように、具体的な背景と、直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。このとき、直前に描写した状況と矛盾しないよう気をつけてください。\n"
+                "プレイヤーキャラクターがこれから何をすれば良いのかが自然とわかるように、具体的な背景と、直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。1つの行動案ごとに改行し、番号ごとに別行にしてください。\n"
                 "プレイヤーに提示する文章は、**わかりやすいようあまり固有名詞を使わず（使うときは十分説明付きで）**、ラノベ風の三人称・地の文で常体にしてください。描写はかっこつけず、わかりやすさを優先して説明してください。"
             )
 
@@ -343,8 +357,8 @@ class IntentHandler:
         response = self.ctx.engine.chat(
             messages=messages,
             caller_name=f"IntentHandler:{kind}_intro",
-            model_level="high",
-            max_tokens=30000
+            model_level="Very_high",
+            max_tokens=20000
         )
 
         self.convlog.append("system", response)
@@ -417,6 +431,7 @@ class IntentHandler:
                 f"\n【システム】このセクションの目的: {goal_text}\n"
                 "※この目的をすべて満たした場合、話に一旦の区切りをつけつつ出力の最後に必ず[end_section]を単独の行で書き、セクションを終了して次のセクションを進んでください。\n"
                 "※このとき、行為判定[action_check]や戦闘判定[combat_start]、行動案の提示を**絶対にしないでください**。\n"
+                "※一つのセクションが短くなりすぎないようにしてください。\n"
                 "※未達成の場合は[end_section]を書かないでください。"
             )
             messages.append({"role": "user", "content": player_input.strip() + goal_instruction})
@@ -446,7 +461,7 @@ class IntentHandler:
 
         if key == "scenario":
 
-            scenario_path = get_data_path(f"worlds/{self.wid}/sessions/{self.sid}/scenario.json")
+            scenario_path = get_data_path(f"worlds/{wid}/sessions/{sid}/scenario.json")
             theme = tone = style = "（未設定）"
             if scenario_path.exists():
                 with open(scenario_path, "r", encoding="utf-8") as f:
@@ -494,7 +509,7 @@ class IntentHandler:
             items = char.get("items", [])
             checks = char.get("checks", {})
 
-            text = f"{name}（レベル{level}）\n背景：{background}"
+            text = f"{name}（レベル{level}）\n背景（あくまで参考に　進行の流れはシナリオ設定優先で）：{background}"
 
             if items:
                 item_lines = [f"- {item}" if isinstance(item, str) else f"- {item.get('name', '')}" for item in items]
@@ -546,16 +561,22 @@ class IntentHandler:
                 f"worlds/{wid}/sessions/{sid}/scenario.json"
             )
 
-            # ✅ 先に scenario.json を読む（overviews を先に用意）
+            # --- scenario.json 読み込み ---
+            scenario_goal = ""
+            chapter_goal = ""
+            overviews = []
             if scenario_path.exists():
                 with open(scenario_path, encoding="utf-8") as f:
                     scenario = json.load(f)
-                overviews = scenario.get("chapters", [])
-            else:
-                scenario = {}
-                overviews = []
 
-            # 次に plan.json
+                draft = scenario.get("draft", {})
+                scenario_goal = draft.get("goal", "").strip()
+                overviews = draft.get("chapters", [])
+
+                if 0 <= (chapter - 1) < len(overviews):
+                    chapter_goal = overviews[chapter - 1].get("goal", "").strip()
+
+            # --- plan.json 読み込み ---
             if plan_path.exists():
                 with open(plan_path, encoding="utf-8") as f:
                     plan = json.load(f)
@@ -565,46 +586,41 @@ class IntentHandler:
             title = plan.get("title", "")
             flow = plan.get("flow", [])
 
-            # 現在のセクション情報（sectionは1-index）
             section_idx = self.state.section - 1
-            current = flow[section_idx] if 0 <= section_idx < len(flow) else {}
-            goal = current.get("goal", "")
-            desc = current.get("description", "")
 
-            # 次のセクション or 次章の overview
-            next_intro = ""
-            if section_idx + 1 < len(flow):
-                next_section = flow[section_idx + 1]
-                next_intro = next_section.get("intro", "")
-            else:
-                # ✅ chapters は1-index → listは0-index。次章は index = chapter
-                if 0 < chapter < len(overviews):
-                    next_chapter = overviews[chapter]
-                    next_intro = next_chapter.get("overview", "")
+            # flow全体を一覧化（現在セクションを明示）
+            flow_lines = []
+            for i, sec in enumerate(flow, 1):
+                scene = sec.get("scene", "")
+                goal = sec.get("goal", "")
+                if i - 1 == section_idx:
+                    flow_lines.append(f"▶ 現在のセクション: 第{i}セクション - {scene} / 目的: {goal}")
+                else:
+                    flow_lines.append(f"  第{i}セクション - {scene} / 目的: {goal}")
 
-            # 現在章の overview
-            overview = ""
-            if 0 < chapter <= len(overviews):
-                overview = overviews[chapter - 1].get("overview", "")
-
+            # 表示組み立て
             lines = []
+            if scenario_goal:
+                lines.append(f"【シナリオ全体の目的】{scenario_goal}")
             if title:
                 lines.append(f"章タイトル: {title}")
-            if overview:
-                lines.append(f"章全体の展開概要: {overview}")
-            if goal:
-                lines.append(f"【重要！！】このセクションの目的: **{goal}**")
-            if desc:
-                lines.append(f"このセクションの詳細: {desc}")
-            if next_intro:
-                if section_idx + 1 < len(flow):
-                    lines.append(f"次のセクションの導入文（セクション終了の参考に）: {next_intro}")
-                elif 0 < chapter < len(overviews):
-                    lines.append(f"次の章の展開予告（現在のセクションがこの章の最後です。セクション終了の参考に）: {next_intro}")
-                else:
-                    lines.append("この章が最終章です。ここで物語は終わりを迎えます。")
+            if chapter_goal:
+                lines.append(f"【この章の目的】{chapter_goal}")
+            lines.append("この章の全セクション構成（▶は現在位置）:")
+            lines.extend(flow_lines)
+
+            # 次の章 or 最終章の情報
+            if chapter < len(overviews):
+                next_chap = overviews[chapter]  # 次章はlist上はchapter index（0基準）
+                next_overview = next_chap.get("overview", "").strip()
+                if next_overview:
+                    lines.append(f"次の章の展開予告: {next_overview}")
+            else:
+                lines.append("この章が最終章です。ここで物語は終わります。")
 
             return PRE_PROMPT_SNIPPETS["plan"].format(plan="\n".join(lines))
+
+
 
 
         return ""
