@@ -413,7 +413,7 @@ class CharacterGrowth:
             return None
 
         prompt = [
-            {"role": "system", "content": "あなたはキャラクター記録の作成者です。以下のセッション要約をもとに、三人称視点から短く一文で記録を生成してください。"},
+            {"role": "system", "content": "あなたはキャラクター記録の作成者です。以下のセッション要約をもとに、三人称視点から200字ほどの記録を生成してください。"},
             {"role": "user", "content": summary_text}
         ]
 

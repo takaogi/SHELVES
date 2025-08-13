@@ -100,7 +100,7 @@ class MessageConsole:
 
         self.root = tk.Tk()
         self.root.title("S.H.E.L.V.E.S. - Message Console")
-        self.root.geometry("1000x700")
+        self.root.geometry("1600x900")
         self.root.configure(bg=self.settings["bg_color"])
 
         self.root.grid_rowconfigure(0, weight=1)
