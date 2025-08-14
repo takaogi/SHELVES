@@ -31,6 +31,8 @@ class CharacterManager(BaseManager):
         char_id = f"char_{ts}_{uuid.uuid4().hex[:4]}"
         created = datetime.now().isoformat()
 
+        data["items"] = self._normalize_items(data.get("items", []))
+
         data["id"] = char_id
         self.save_character_file(char_id, data)
 
@@ -40,7 +42,7 @@ class CharacterManager(BaseManager):
             "created": created,
             "tags": tags or [],
             "notes": notes,
-            "level": data.get("level")  # ← ここを追加
+            "level": data.get("level")
         }
 
         self.entries.append(entry)
@@ -53,12 +55,18 @@ class CharacterManager(BaseManager):
         with path.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
+
     def load_character_file(self, char_id: str) -> dict:
         path = self.base_dir / f"{char_id}.json"
         if not path.exists():
             raise FileNotFoundError(f"キャラクターファイルが見つかりません: {char_id}")
         with path.open("r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+
+        # itemsを統一形式に変換
+        data["items"] = self._normalize_items(data.get("items", []))
+        return data
+
 
     def delete_character(self, char_id: str) -> bool:
         file_path = self.base_dir / f"{char_id}.json"
@@ -83,3 +91,21 @@ class CharacterManager(BaseManager):
         except FileNotFoundError:
             self.log.warning(f"名前変更失敗（キャラが存在しません）: {char_id}")
             return False
+        
+
+    def _normalize_items(self, items):
+        """旧仕様（文字列配列）を新仕様（オブジェクト配列）に変換"""
+        if isinstance(items, list):
+            new_items = []
+            for i, item in enumerate(items):
+                if isinstance(item, str):
+                    new_items.append({"name": item, "count": 1, "description": ""})
+                elif isinstance(item, dict):
+                    new_items.append({
+                        "name": item.get("name", f"item_{i}"),
+                        "count": item.get("count", 1),
+                        "description": item.get("description", "")
+                    })
+            return new_items
+        return []
+

@@ -53,7 +53,7 @@ SCENARIO_DRAFT_SCHEMA = {
                     "properties": {
                         "name": {"type": "string"},
                         "type": {"type": "string"},
-                        "note": {"type": "string","minLength": 50}
+                        "notes": {"type": "string","minLength": 50}
                     },
                     "required": ["name", "type", "note"],
                     "additionalProperties": False
@@ -87,7 +87,16 @@ CHARACTER_GENERATION_SCHEMA = {
             "dislikes": {"type": "string"},
             "items": {
                 "type": "array",
-                "items": {"type": "string"}
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string"},
+                        "count": {"type": "integer", "minimum": 0},
+                        "description": {"type": "string"}
+                    },
+                    "required": ["name", "count", "description"],
+                    "additionalProperties": False
+                }
             },
             "beliefs": {"type": "string"},
             "summary": {"type": "string"},
@@ -375,7 +384,11 @@ class SessionCreate:
         long_desc = self.flags["worldview"].get("long_description", "")
         player_input = input_text.strip()
         self.ctx.nouns_mgr.set_worldview_id(self.wid)
-        nouns = self.ctx.nouns_mgr.entries[:10]
+        nouns = self.ctx.nouns_mgr.entries[:15]
+        readable_nouns = "\n".join(
+            f"- {noun['name']}（{noun['type']}）：{noun.get('notes', '')}"
+            for noun in nouns
+        )
 
         system_prompt = (
             "あなたはTRPGのキャラクターを自動生成するアシスタントです。\n"
@@ -394,7 +407,10 @@ class SessionCreate:
             "- physique: 体格（身長・体型・特徴的な部位など）。\n"
             "- abilities: 特徴的な技能・才能（例：剣術と瞬発力に優れる、炎の魔法に長けるなど）。\n"
             "- weaknesses: 苦手なこと・欠点・弱点（例：方向音痴、人付き合いが苦手）。\n"
-            "- likes: 好きなもの、興味対象（例：猫、静かな場所、古代文明）。\n"
+            "- items: 所持品のリスト。各要素は以下のフィールドを含めます：\n"
+            "    - name: アイテム名（例：家族の形見のペンダント、魔法の杖、旅人の背嚢）。\n"
+            "    - count: 所持数（整数、例：1, 3など）。\n"
+            "    - description: アイテムの簡単な説明（例：銀細工の古びたペンダント、先端に宝石が嵌め込まれた杖）。\n"
             "- dislikes: 苦手なもの、嫌悪対象（例：虫、大声、嘘）。\n"
             "- items: 所持品（例：家族の形見のペンダント、魔法の杖、旅人の背嚢）。\n"
             "- beliefs: 価値観・信条（例：力こそ正義、命はすべて等しい）。\n"
@@ -406,9 +422,8 @@ class SessionCreate:
 
         user_prompt = (
             f"▼ 世界観の説明:\n{long_desc}\n\n"
-            f"▼ 固有名詞一覧:\n" +
-            json.dumps(nouns, ensure_ascii=False, indent=2) +
-            f"\n\n▼ プレイヤーの記述:\n{player_input}"
+            f"▼ 固有名詞一覧:\n{readable_nouns}\n\n"
+            f"▼ プレイヤーの記述:\n{player_input}"
         )
 
         messages = [
@@ -419,8 +434,8 @@ class SessionCreate:
         result = self.ctx.engine.chat(
             messages=messages,
             caller_name="AutoCharacter",
-            model_level="high",
-            max_tokens=10000,
+            model_level="very_high",
+            max_tokens=20000,
             schema=CHARACTER_GENERATION_SCHEMA
         )
 
@@ -1033,8 +1048,10 @@ class SessionCreate:
         noun_lines = []
         for noun in nouns:
             name = noun.get("name", "")
-            desc = noun.get("description", "")
-            noun_lines.append(f"- {name}：{desc}")
+            type_ = noun.get("type", "")
+            desc = noun.get("notes", "")
+            noun_lines.append(f"- {name}（{type_}）：{desc}")
+
 
         # キャラ紹介＋履歴
         pc_desc = pc.get("background") or pc.get("summary") or "（説明なし）"
@@ -1209,7 +1226,7 @@ class SessionCreate:
                 "    ・アイテム（武器、道具、遺物など重要な物品）\n"
                 "    ・ギミック（仕掛け、封印、装置、トラップなどのプレイヤーの障害　noteにはその解除方法も必ず追記する）\n"  
                 "    ・その他（上記に当てはまらないが記録すべきもの）\n"
-                "- note: その内容を100字程度で自然文として説明（特にアイテムの場合は、その形や大きさ、具体的な持っている力などをわかりやすく）\n"
+                "- notes: その内容を100字程度で自然文として説明（特にアイテムの場合は、その形や大きさ、具体的な持っている力などをわかりやすく）\n"
                 "\n"
                 "重要な設定が存在しない場合は空リストで構いません。**世界観の要素として渡している内容と同等のものは、設定し直さないでください。**混乱の元となります。"
             )
@@ -1295,7 +1312,7 @@ class SessionCreate:
                         canon_mgr.create_fact(
                             name=fact.get("name", "名称未設定"),
                             type=fact.get("type", "その他"),
-                            notes=fact.get("note", ""),
+                            notes=fact.get("notes", ""),
                             chapter=0  # シナリオ生成時は0章として扱う
                         )
                     except Exception as e:

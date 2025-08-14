@@ -219,16 +219,64 @@ class CombatHandler:
         if desc:
             lines.append("【世界観】\n" + desc.strip())
 
+        # 固有名詞
+        self.ctx.nouns_mgr.set_worldview_id(wid)
+        nouns = self.ctx.nouns_mgr.entries
+        if nouns:
+            noun_lines = []
+            for n in nouns:
+                name = n.get("name", "")
+                typ = n.get("type", "")
+                notes = n.get("notes", "")
+                noun_lines.append(f"- {name}（{typ}）：{notes}")
+            lines.append("\n## 世界観の固有名詞一覧:\n" + "\n".join(noun_lines))
+
+        # カノン
+        self.ctx.canon_mgr.set_context(wid, self.state.session_id)
+        canon_entries = self.ctx.canon_mgr.entries
+        if canon_entries:
+            canon_lines = []
+            for c in canon_entries:
+                name = c.get("name", "")
+                typ = c.get("type", "")
+                notes = c.get("notes", "")
+                canon_lines.append(f"- {name}（{typ}）：{notes}")
+            lines.append("\n## これまでに確定したカノン:\n" + "\n".join(canon_lines))
+
+
+
         char_lines = [f"{char.get('name', '？？？')}（レベル{char.get('level', '?')}）"]
         for key in ("summary", "background", "personality", "physique", "abilities", "weaknesses", "beliefs", "items"):
             val = char.get(key)
             if not val:
                 continue
-            if isinstance(val, list):
+
+            if key == "items":
+                if isinstance(val, str):
+                    # 万一旧仕様で単一文字列
+                    char_lines.append(f"- {key}: {val}")
+                elif isinstance(val, list):
+                    item_lines = []
+                    for item in val:
+                        if isinstance(item, str):
+                            # 旧仕様の文字列アイテム
+                            item_lines.append(item)
+                        elif isinstance(item, dict):
+                            name = item.get("name", "")
+                            count = item.get("count", 0)
+                            desc = item.get("description", "")
+                            if desc:
+                                item_lines.append(f"{name} ×{count}：{desc}")
+                            else:
+                                item_lines.append(f"{name} ×{count}")
+                    char_lines.append(f"- {key}: " + "、".join(item_lines))
+            elif isinstance(val, list):
+                # 旧仕様の配列型（items以外）
                 joined = "、".join(val)
                 char_lines.append(f"- {key}: {joined}")
             else:
                 char_lines.append(f"- {key}: {val}")
+
 
         lines.append("【キャラクター】\n" + "\n".join(char_lines))
 

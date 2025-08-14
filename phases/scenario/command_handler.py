@@ -9,10 +9,16 @@ class CommandHandler:
         self.log = get_logger("CommandHandler")
 
     def execute(self, command: str, args: list[str], chapter: int = 0):
-        if command == "add_item" and len(args) == 1:
-            return self._add_item(args[0])
-        elif command == "remove_item" and len(args) == 1:
-            return self._remove_item(args[0])
+        if command == "add_item" and len(args) >= 1:
+            # name, count, description の順（count, description は省略可）
+            name = args[0]
+            count = int(args[1]) if len(args) >= 2 and args[1].isdigit() else 1
+            desc = args[2] if len(args) >= 3 else ""
+            return self._add_item(name, count, desc)
+        elif command == "remove_item" and len(args) >= 1:
+            name = args[0]
+            count = int(args[1]) if len(args) >= 2 and args[1].isdigit() else 1
+            return self._remove_item(name, count)
         elif command == "add_history" and len(args) == 2:
             return self._add_history(args[0], args[1], chapter)
         elif command == "create_canon" and len(args) >= 3:
@@ -20,7 +26,7 @@ class CommandHandler:
         else:
             self.log.warning(f"未対応または不正なコマンド: {command} {args}")
         return False
-
+    
     # --- helpers ---
     def _get_player_character_id(self) -> str | None:
         session = self.ctx.session_mgr.get_entry_by_id(self.sid)
@@ -30,7 +36,7 @@ class CommandHandler:
         return pc  # 文字列ID or None
 
     # --- inventory ops ---
-    def _add_item(self, item_name: str):
+    def _add_item(self, item_name: str, count: int = 1, description: str = ""):
         cm = self.ctx.character_mgr
         pcid = self._get_player_character_id()
         if not pcid:
@@ -39,17 +45,23 @@ class CommandHandler:
 
         char = cm.load_character_file(pcid)
         items = char.setdefault("items", [])
-        if item_name not in items:
-            items.append(item_name)
-            self.log.info(f"アイテム追加: {item_name} → PC={pcid}")
-        else:
-            self.log.info(f"アイテム追加スキップ（既に所持）: {item_name} → PC={pcid}")
-        char["items"] = items
 
+        # 既存アイテム検索
+        existing = next((i for i in items if isinstance(i, dict) and i.get("name") == item_name), None)
+        if existing:
+            existing["count"] += count
+            if description:
+                existing["description"] = description
+            self.log.info(f"アイテム更新: {item_name} ×{existing['count']} → PC={pcid}")
+        else:
+            items.append({"name": item_name, "count": count, "description": description})
+            self.log.info(f"アイテム追加: {item_name} ×{count} → PC={pcid}")
+
+        char["items"] = items
         cm.save_character_file(pcid, char)
         return True
 
-    def _remove_item(self, item_name: str):
+    def _remove_item(self, item_name: str, count: int = 1):
         cm = self.ctx.character_mgr
         pcid = self._get_player_character_id()
         if not pcid:
@@ -58,15 +70,29 @@ class CommandHandler:
 
         char = cm.load_character_file(pcid)
         items = char.get("items", [])
-        if item_name in items:
-            items.remove(item_name)
-            self.log.info(f"アイテム削除: {item_name} → PC={pcid}")
+        removed = False
+
+        for i in list(items):
+            if isinstance(i, dict) and i.get("name") == item_name:
+                if i["count"] > count:
+                    i["count"] -= count
+                else:
+                    items.remove(i)
+                removed = True
+                break
+            elif isinstance(i, str) and i == item_name:
+                items.remove(i)
+                removed = True
+                break
+
+        if removed:
+            self.log.info(f"アイテム削除: {item_name} ×{count} → PC={pcid}")
         else:
             self.log.info(f"アイテム削除スキップ（未所持）: {item_name} → PC={pcid}")
-        char["items"] = items
 
+        char["items"] = items
         cm.save_character_file(pcid, char)
-        return True
+        return removed
 
     # --- canon ops ---
     def _add_history(self, canon_name: str, text: str, chapter: int):

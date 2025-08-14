@@ -202,6 +202,17 @@ class ChapterGenerator:
             lines.append(f"- 名前: {name}")
             lines.append(f"- レベル: {level}")
             lines.append(f"- 背景: {background}")
+
+            # 所持品（新仕様: オブジェクト配列）
+            items = pc.get("items", [])
+            if items:
+                lines.append("- 所持品:")
+                for item in items:
+                    item_name = item.get("name", "")
+                    item_count = item.get("count", 0)
+                    item_desc = item.get("description", "")
+                    lines.append(f"  - {item_name} ×{item_count}：{item_desc}")
+
             lines.append(
                 "レベルは戦闘能力の指標で、以下のような目安です：\n"
                 "0：一般人（非戦闘員）\n"
@@ -211,14 +222,22 @@ class ChapterGenerator:
                 "11〜13：伝説・神話級の英雄\n"
                 "14〜15：神や精霊に匹敵する存在\n\n"
             )
+
         # 固有名詞
         lines.append("\n## 世界観の固有名詞一覧:")
-        lines.append(json.dumps(self.nouns, ensure_ascii=False, indent=2))
-
+        for noun in self.nouns:
+            name = noun.get("name", "")
+            type_ = noun.get("type", "")
+            notes = noun.get("notes", "")
+            lines.append(f"- {name}（{type_}）：{notes}")
 
         # これまでのカノン
         lines.append("\n## これまでに確定したカノン:")
-        lines.append(json.dumps(self.canon, ensure_ascii=False, indent=2))
+        for canon_entry in self.canon:
+            name = canon_entry.get("name", "")
+            type_ = canon_entry.get("type", "")
+            notes = canon_entry.get("notes", "")
+            lines.append(f"- {name}（{type_}）：{notes}")
 
 
         return "\n".join(lines)

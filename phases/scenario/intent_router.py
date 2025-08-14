@@ -41,7 +41,7 @@ def classify_intent(ctx, input_text: str, convlog) -> IntentLabel:
     # 最初のsystemメッセージは履歴の中ではなくmessages[0]として挿入
     messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
 
-    result = ctx.engine.chat(messages=messages, caller_name="IntentRouter")
+    result = ctx.engine.chat(messages=messages, caller_name="IntentRouter",model_level = "medium",max_tokens = 20000)
 
     try:
         parsed = json.loads(result)

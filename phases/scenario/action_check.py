@@ -229,9 +229,23 @@ class ActionCheck:
                 continue
             if key == "items":
                 if isinstance(value, str):
+                    # 万一まだ旧仕様で単一文字列の場合
                     char_lines.append(f"{label}:\n- {value}")
                 elif isinstance(value, list):
-                    item_lines = [f"- {item}" if isinstance(item, str) else f"- {item.get('name', '')}" for item in value]
+                    # 新仕様: オブジェクト配列
+                    item_lines = []
+                    for item in value:
+                        if isinstance(item, str):
+                            # 旧仕様の文字列アイテム
+                            item_lines.append(f"- {item}")
+                        elif isinstance(item, dict):
+                            name = item.get("name", "")
+                            count = item.get("count", 0)
+                            desc = item.get("description", "")
+                            if desc:
+                                item_lines.append(f"- {name} ×{count}：{desc}")
+                            else:
+                                item_lines.append(f"- {name} ×{count}")
                     char_lines.append(f"{label}:\n" + "\n".join(item_lines))
             elif key in {"summary", "background", "notes"}:
                 char_lines.append(f"\n▼ {label}:\n{value}")
@@ -250,15 +264,19 @@ class ActionCheck:
         self.ctx.nouns_mgr.set_worldview_id(wid)
         nouns = self.ctx.nouns_mgr.entries
         if nouns:
-            noun_lines = [f"- {n.get('name', '')}：{n.get('description', '')}" for n in nouns]
-            lines.append("【固有名詞】\n" + "\n".join(noun_lines))
+            noun_lines = []
+            for n in nouns:
+                name = n.get("name", "")
+                typ = n.get("type", "")
+                notes = n.get("notes", "")
+                noun_lines.append(f"- {name}（{typ}）")
+                if notes:
+                    noun_lines.append(f"  概要: {notes}")
+            lines.append("【世界観固有名詞】\n" + "\n".join(noun_lines))
 
         # canon
-
-
         self.ctx.canon_mgr.set_context(wid, sid)
         canon = self.ctx.canon_mgr.list_entries() if hasattr(self.ctx.canon_mgr, "list_entries") else self.ctx.canon_mgr.entries
-
         if canon:
             canon_lines = []
             for entry in canon:
