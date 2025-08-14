@@ -55,7 +55,7 @@ SCENARIO_DRAFT_SCHEMA = {
                         "type": {"type": "string"},
                         "notes": {"type": "string","minLength": 50}
                     },
-                    "required": ["name", "type", "note"],
+                    "required": ["name", "type", "notes"],
                     "additionalProperties": False
                 }
             }
