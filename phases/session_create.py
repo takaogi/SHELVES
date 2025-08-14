@@ -495,8 +495,21 @@ class SessionCreate:
                     if isinstance(value, list):
                         lines.append("\n▼ 所持品:")
                         for it in value:
-                            lines.append(f"- {it}")
+                            if isinstance(it, str):
+                                # 旧仕様：単なる文字列
+                                lines.append(f"- {it}")
+                            elif isinstance(it, dict):
+                                name = it.get("name", "")
+                                count = it.get("count", 0)
+                                desc = it.get("description", "")
+                                if desc:
+                                    lines.append(f"- {name} ×{count}：{desc}")
+                                else:
+                                    lines.append(f"- {name} ×{count}")
+                            else:
+                                lines.append(f"- {str(it)}")  # 念のため
                     else:
+                        # 旧仕様：単一文字列
                         lines.append(f"所持品: {value}")
                 else:
                     lines.append(f"{label}: {value}")
