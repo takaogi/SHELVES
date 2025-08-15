@@ -2,6 +2,7 @@
 import unicodedata
 import json
 import random
+from infra.path_helper import get_data_path
 
 # === Structured JSON Schemas ===
 SCENARIO_META_SCHEMA = {
@@ -1102,6 +1103,24 @@ class SessionCreate:
             user_parts.append("\n■ 世界観の要素：")
             user_parts.extend(noun_lines)
 
+        # --- 前回から引き継ぐ設定要素（続編用 canon） ---
+        sequel_from = self.flags.get("sequel_to")
+        if sequel_from:
+            sequel_path = get_data_path(f"worlds/{wid}/sessions/{sequel_from}/canon_sequel.json")
+            if sequel_path.exists():
+                try:
+                    with open(sequel_path, encoding="utf-8") as f:
+                        sequel_canon = json.load(f)
+                    if sequel_canon:
+                        user_parts.append("\n■ 前回から引き継ぐ設定要素（続編用 canon）：")
+                        for c in sequel_canon:
+                            name = c.get("name", "")
+                            type_ = c.get("type", "")
+                            note = c.get("note", "")
+                            user_parts.append(f"- {name}（{type_}）：{note}")
+                except Exception as e:
+                    self.log.warning(f"続編 canon の読み込み失敗: {e}")
+
         if summary:
             user_parts.append("\n■ 前回のあらすじ（参考）：")
             user_parts.append(summary)
@@ -1274,12 +1293,6 @@ class SessionCreate:
         except Exception:
             return self._reject("シナリオの生成に失敗しました。入力内容を見直してください。", step=1000)
 
-
-
-
-
-
-
     def _handle_scenario_review_choice(self, input_text: str) -> tuple[dict, str]:
         choice = unicodedata.normalize("NFKC", input_text.strip())
 
@@ -1339,6 +1352,27 @@ class SessionCreate:
                     except Exception as e:
                         self.ctx.ui.safe_print("System", f"カノン保存失敗: {fact.get('name', '?')} - {e}")
 
+
+            # 前作から引き継いだ canon_sequel も保存
+            if sequel_from:
+                sequel_path = get_data_path(f"worlds/{wid}/sessions/{sequel_from}/canon_sequel.json")
+                if sequel_path.exists():
+                    try:
+                        with open(sequel_path, encoding="utf-8") as f:
+                            sequel_canon = json.load(f)
+                        canon_mgr.set_context(wid, sid)
+                        for fact in sequel_canon:
+                            try:
+                                canon_mgr.create_fact(
+                                    name=fact.get("name", "名称未設定"),
+                                    type=fact.get("type", "その他"),
+                                    notes=fact.get("note", ""),  # sequelは note キー
+                                    chapter=0
+                                )
+                            except Exception as e:
+                                self.ctx.ui.safe_print("System", f"続編カノン保存失敗: {fact.get('name', '?')} - {e}")
+                    except Exception as e:
+                        self.ctx.ui.safe_print("System", f"続編カノン読み込み失敗: {e}")
 
             self.progress_info["phase"] = "session_resume"
             self.progress_info["step"] = 0

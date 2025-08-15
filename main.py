@@ -150,7 +150,7 @@ def main():
     if args.debug:
         ui.safe_print("System", "［Debug］デバッグモード有効")
 
-    controller = MainController(ctx)
+    controller = MainController(ctx, debug=args.debug)
 
     progress_info = {
         "phase": "prologue",

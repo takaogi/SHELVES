@@ -2,6 +2,7 @@ import unicodedata
 import copy
 import json
 from infra.path_helper import get_data_path
+from infra.logging import get_logger
 
 class CharacterGrowth:
     def __init__(self, ctx, progress_info):
@@ -11,6 +12,7 @@ class CharacterGrowth:
         self.sid = self.flags.get("growth_session_id")
         self.wid = self.flags.get("growth_worldview_id")
         self.pcid = self.flags.get("growth_character_id")
+        self.log = get_logger("ScenarioEnding")
 
         self.char_mgr = ctx.character_mgr
         self.char_mgr.set_worldview_id(self.wid)
@@ -53,7 +55,8 @@ class CharacterGrowth:
             case 30:  return self._step_show_summary_proposal()
             case 31:  return self._step_history_confirm(input_text)
             case 32:  return self._step_history_manual_input(input_text)
-            case 100: return self._step_finalize()
+            case 100:  return self._step_finalize_canon()
+            case 101: return self._step_finalize()
             case _:   return self._fail("不正なステップです。")
 
     #==================================================
@@ -391,12 +394,24 @@ class CharacterGrowth:
     #==================================================
     # 終了
     #==================================================
+
+    def _step_finalize_canon(self) -> tuple[dict, str]:
+
+        self.progress_info["step"] = 101
+        self.progress_info["auto_continue"] = True
+        return self.progress_info, "シナリオを世界観にフィードバックします。"
+
     def _step_finalize(self) -> tuple[dict, str]:
+        # シナリオ中に作成された canon を worldview / sequel に振り分けて保存
+        self._finalize_canon_to_nouns()
+        
+
         self.progress_info["phase"] = "prologue"
         self.progress_info["step"] = 0
         self.progress_info["flags"] = {}
         self.progress_info["auto_continue"] = True
-        return self.progress_info, "キャラクター成長フェーズを終了します。\n\n"
+        return self.progress_info, "シナリオエンドフェーズを終了します。\n\n"
+
 
     #==================================================
     # 既存の履歴生成ロジック
@@ -454,6 +469,18 @@ class CharacterGrowth:
             self.log.info("ギミック以外の canon がありません。")
             return
 
+        # すでに登録されている nouns を取得
+        existing_nouns = nouns_mgr.entries  # すでにロード済みリスト
+        existing_nouns_brief = [
+            {
+                "name": n["name"],
+                "type": n["type"],
+                "note": n.get("notes", ""),
+                "fame": n.get("fame", "")
+            }
+            for n in existing_nouns
+        ]
+
         # 世界観の long_description を取得
         worldview = self.ctx.worldview_mgr.get_entry_by_id(self.wid)
         long_desc = worldview.get("long_description", "")
@@ -464,19 +491,31 @@ class CharacterGrowth:
 以下はこの世界観の説明と、今回のシナリオで新たに得られた canon_facts の一覧です。
 各 canon を以下の2つのカテゴリのいずれかに振り分けてください。
 
-- worldview: 世界観に登録すべきもの（後の全シナリオで参照可能）
-- sequel: 次回以降の続編シナリオで利用するもの 関わりの深いNPCなど（世界観登録はしない）
+- worldview: 世界的に知名度がある、もしくはその世界に広く根付いていて世界観に登録すべきもの（後の全シナリオで参照可能）
+- sequel: 世界観に登録するべきではないが、次回以降の続編シナリオで利用するもの PCと関わりの深いNPCなど
 
 制約:
-- worldview は最大3件、sequel は最大5件
+- worldview は最大3件、sequel は最大5件　worldviewに入れたものも続編シナリオで利用できるので、両方に同じものを入れてはいけない　
 - worldview のみ fame を設定（0〜50、小さいほど広く知られている）
 - fame はその設定が世界でどれだけ知られているかを基準に決める
 - 出力スキーマに必ず従う
 
+【fame フィールド】
+- fame は 0〜50 の整数で、小さいほど知名度が高い。
+- 0 は「その世界の住民のほぼ全員が知っている」。地球でいう「太陽」「王都の名前」など。
+- 10 前後は「大半の住民が名前を聞いたことがある」。例：主要な都市、著名な英雄、国王の名前、宗教の総本山。
+- 20 前後は「その地域圏では広く知られているが、遠隔地では無名もしくは誤解されている」。例：地方の大領主、名高い遺跡、地域限定の伝説。
+- 30 前後は「限られた専門家・関係者・一部地域の人々だけが知る」。例：特定の学派、隠れ里、特異な自然現象。
+- 40 前後は「ごく一部の人物だけが存在を知る」。例：密命を帯びた組織、封印された秘宝、極秘の儀式。
+- 50 は「現時点で誰も知らない、または完全に失われた」。例：忘れられた神の名、時代と共に消えた文明、未発見の遺跡。
+
 世界観説明:
 {long_desc}
 
-canon_facts:
+すでに登録されている固有名詞（参考：重複して登録しないように）：
+{json.dumps(existing_nouns_brief, ensure_ascii=False, indent=2)}
+
+canon_facts（これを振り分ける）:
 {json.dumps(filtered_canon, ensure_ascii=False, indent=2)}
     """
 
@@ -498,7 +537,8 @@ canon_facts:
                                 "note": {"type": "string"},
                                 "fame": {"type": "integer", "minimum": 0, "maximum": 50}
                             },
-                            "required": ["name", "type", "tags", "note", "fame"]
+                            "required": ["name", "type", "tags", "note", "fame"],
+                            "additionalProperties": False   # ← これ追加
                         }
                     },
                     "sequel": {
@@ -512,24 +552,27 @@ canon_facts:
                                 "tags": {"type": "array", "items": {"type": "string"}},
                                 "note": {"type": "string"}
                             },
-                            "required": ["name", "type", "tags", "note"]
+                            "required": ["name", "type", "tags", "note"],
+                            "additionalProperties": False   # ← これ追加
                         }
                     }
                 },
-                "required": ["worldview", "sequel"]
+                "required": ["worldview", "sequel"],
+                "additionalProperties": False  # ← これも必須
             }
         }
+
 
         resp = self.ctx.engine.chat(
             messages=[{"role": "system", "content": system_prompt}],
             caller_name="FinalizeCanon",
-            model_level="High",
-            max_tokens=2000,
-            response_format=schema
+            model_level="very_high",
+            max_tokens=20000,
+            schema=schema
         )
 
         try:
-            selection = resp.output_parsed
+            selection = resp  # schema使用時はすでにパース済み
         except Exception as e:
             self.log.error(f"Canon分類のパースに失敗: {e}")
             return
