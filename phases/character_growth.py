@@ -3,13 +3,12 @@ import copy
 import json
 from infra.path_helper import get_data_path
 
-# 1回の成長フェーズで新規に支給されるポイント（好みで調整OK）
-
 class CharacterGrowth:
     def __init__(self, ctx, progress_info):
         self.ctx = ctx
         self.progress_info = progress_info
         self.flags = progress_info.setdefault("flags", {})
+        self.sid = self.flags.get("growth_session_id")
         self.wid = self.flags.get("growth_worldview_id")
         self.pcid = self.flags.get("growth_character_id")
 
@@ -427,3 +426,128 @@ class CharacterGrowth:
         self.progress_info["phase"] = "prologue"
         self.progress_info["step"] = 0
         return self.progress_info, f"[致命的エラー] {message}"
+    
+    def _finalize_canon_to_nouns(self):
+        """
+        シナリオ終了時に canon_facts を AI 判定して
+        - 世界観に登録する nouns（最大3件）
+        - 続編用 canon（最大5件）
+        に振り分けて保存する
+        """
+        self.sid = self.flags.get("growth_session_id")
+        self.wid = self.flags.get("growth_worldview_id")
+
+        canon_mgr = self.ctx.canon_mgr
+        canon_mgr.set_context(self.wid, self.sid)  # ← ここ追加
+        nouns_mgr = self.ctx.nouns_mgr
+        nouns_mgr.set_worldview_id(self.wid)
+
+        # 現在シナリオの canon 一覧を取得
+        all_canon = canon_mgr.list_entries()
+        if not all_canon:
+            self.log.info("処理対象の canon がありません。")
+            return
+
+        # ギミックは除外
+        filtered_canon = [c for c in all_canon if c.get("type") != "ギミック"]
+        if not filtered_canon:
+            self.log.info("ギミック以外の canon がありません。")
+            return
+
+        # 世界観の long_description を取得
+        worldview = self.ctx.worldview_mgr.get_entry_by_id(self.wid)
+        long_desc = worldview.get("long_description", "")
+
+        # AI にまとめて判定させる
+        system_prompt = f"""
+あなたはTRPGの世界設定整理アシスタントです。
+以下はこの世界観の説明と、今回のシナリオで新たに得られた canon_facts の一覧です。
+各 canon を以下の2つのカテゴリのいずれかに振り分けてください。
+
+- worldview: 世界観に登録すべきもの（後の全シナリオで参照可能）
+- sequel: 次回以降の続編シナリオで利用するもの 関わりの深いNPCなど（世界観登録はしない）
+
+制約:
+- worldview は最大3件、sequel は最大5件
+- worldview のみ fame を設定（0〜50、小さいほど広く知られている）
+- fame はその設定が世界でどれだけ知られているかを基準に決める
+- 出力スキーマに必ず従う
+
+世界観説明:
+{long_desc}
+
+canon_facts:
+{json.dumps(filtered_canon, ensure_ascii=False, indent=2)}
+    """
+
+        schema = {
+            "type": "json_schema",
+            "name": "CanonSelection",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "worldview": {
+                        "type": "array",
+                        "maxItems": 3,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "type": {"type": "string"},
+                                "tags": {"type": "array", "items": {"type": "string"}},
+                                "note": {"type": "string"},
+                                "fame": {"type": "integer", "minimum": 0, "maximum": 50}
+                            },
+                            "required": ["name", "type", "tags", "note", "fame"]
+                        }
+                    },
+                    "sequel": {
+                        "type": "array",
+                        "maxItems": 5,
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": {"type": "string"},
+                                "type": {"type": "string"},
+                                "tags": {"type": "array", "items": {"type": "string"}},
+                                "note": {"type": "string"}
+                            },
+                            "required": ["name", "type", "tags", "note"]
+                        }
+                    }
+                },
+                "required": ["worldview", "sequel"]
+            }
+        }
+
+        resp = self.ctx.engine.chat(
+            messages=[{"role": "system", "content": system_prompt}],
+            caller_name="FinalizeCanon",
+            model_level="High",
+            max_tokens=2000,
+            response_format=schema
+        )
+
+        try:
+            selection = resp.output_parsed
+        except Exception as e:
+            self.log.error(f"Canon分類のパースに失敗: {e}")
+            return
+
+        # worldview に登録
+        for wv in selection.get("worldview", []):
+            nouns_mgr.create_noun(
+                name=wv["name"],
+                type=wv["type"],
+                tags=wv.get("tags", []),
+                notes=wv["note"],
+                fame=wv["fame"]
+            )
+
+        # sequel 用 canon 保存
+        sequel_path = get_data_path(f"worlds/{self.wid}/sessions/{self.sid}/canon_sequel.json")
+        with sequel_path.open("w", encoding="utf-8") as f:
+            json.dump(selection.get("sequel", []), f, ensure_ascii=False, indent=2)
+
+        self.log.info(f"worldview登録 {len(selection.get('worldview', []))} 件, sequel保存 {len(selection.get('sequel', []))} 件 完了")
+

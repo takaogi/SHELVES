@@ -38,9 +38,6 @@ class CanonManager(BaseManager):
             "name": name,
             "type": type,
             "notes": notes,
-            "history": [
-                {"chapter": chapter, "text": notes}
-            ],
             "created": created
         }
 

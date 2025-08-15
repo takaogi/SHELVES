@@ -21,9 +21,10 @@ class NounsManager(BaseManager):
         self.index_file = self.base_dir / "nouns_index.json"
         self.entries = self._load_index()
         self.log.info(f"NounsManager: worldview_id を {wid} に切り替えました")
-
+        
     def create_noun(self, name: str, type: str, tags: list[str] = None,
-                    category: str = "", notes: str = "", details: dict = None) -> str:
+                    category: str = "", notes: str = "", fame: int = 25,
+                    details: dict = None) -> str:
         if not self.wid:
             raise ValueError("worldview_id が設定されていません。 set_worldview_id() を先に呼んでください。")
 
@@ -38,13 +39,14 @@ class NounsManager(BaseManager):
             "category": category,
             "tags": tags or [],
             "notes": notes,
+            "fame": fame,  # ★ 追加
             "details": details or {},
             "created": created
         }
 
         self.entries.append(entry)
         self._save_index()
-        self.log.info(f"固有名詞作成: {name} (id={noun_id}, type={type})")
+        self.log.info(f"固有名詞作成: {name} (id={noun_id}, type={type}, fame={fame})")
         return noun_id
 
     def delete_noun(self, noun_id: str) -> bool:
