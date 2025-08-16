@@ -546,7 +546,7 @@ class IntentHandler:
         
         elif key == "nouns":
             self.ctx.nouns_mgr.set_worldview_id(wid)
-            nouns = self.ctx.nouns_mgr.entries
+            nouns = self.ctx.nouns_mgr.entries[:20]
             noun_lines = [
                 f"- {n.get('name', '')}（{n.get('type', '')}）：{n.get('notes', '')}"
                 for n in nouns

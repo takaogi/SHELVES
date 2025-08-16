@@ -74,3 +74,13 @@ class NounsManager(BaseManager):
         grouped = defaultdict(list)
         for e in self.entries:
             grouped[e.get("type", "未分類")].append
+
+    def sort_index_by_fame(self, ascending: bool = True) -> None:
+        """
+        fame の値で entries を並び替える。
+        少ない順 (ascending=True) がデフォルト。
+        """
+        # デフォルト値は 0 にしておく（fame 未設定対策）
+        self.entries.sort(key=lambda e: e.get("fame", 0), reverse=not ascending)
+        self._save_index()
+        self.log.info(f"nouns_index を fame {'昇順' if ascending else '降順'} に並び替えました")

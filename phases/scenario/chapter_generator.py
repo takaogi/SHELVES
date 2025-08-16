@@ -64,7 +64,8 @@ class ChapterGenerator:
         
         # nouns, canon はマネージャーに読み込ませる
         ctx.nouns_mgr.set_worldview_id(wid)
-        self.nouns = ctx.nouns_mgr.list_entries()
+        self.nouns = ctx.nouns_mgr.list_entries()[:30]
+
 
         ctx.canon_mgr.set_context(wid, sid)
         self.canon = ctx.canon_mgr.list_entries()
@@ -179,10 +180,6 @@ class ChapterGenerator:
         # 直前章のhistory（既存処理のまま）
         lines += self._load_previous_chapter_history()
 
-        # 世界観説明
-        lines.append("\n## 世界観の説明:")
-        lines.append(self.worldview.get("long_description") or self.worldview.get("description", ""))
-
         # PC
         lines.append("\n## PC:")
         pcid = self.session.get("player_character")
@@ -222,6 +219,10 @@ class ChapterGenerator:
                 "11〜13：伝説・神話級の英雄\n"
                 "14〜15：神や精霊に匹敵する存在\n\n"
             )
+
+        # 世界観説明
+        lines.append("\n## 世界観の説明:")
+        lines.append(self.worldview.get("long_description") or self.worldview.get("description", ""))
 
         # 固有名詞
         lines.append("\n## 世界観の固有名詞一覧:")

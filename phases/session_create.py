@@ -1042,7 +1042,7 @@ class SessionCreate:
 
         self.ctx.nouns_mgr.set_worldview_id(wid)
         nouns = self.ctx.nouns_mgr.entries
-        worldview_description = worldview.get("description", "")
+        worldview_description = worldview.get("long_description", "")
         worldview_name = worldview.get("name", "無名世界")
         summary = ""
 

@@ -489,13 +489,15 @@ class CharacterGrowth:
         system_prompt = f"""
 あなたはTRPGの世界設定整理アシスタントです。
 以下はこの世界観の説明と、今回のシナリオで新たに得られた canon_facts の一覧です。
-各 canon を以下の2つのカテゴリのいずれかに振り分けてください。
+各 canon のうち今後継続して登場したほうが良いものを以下の2つのカテゴリのいずれかに振り分け、また不要なものは無視してください。
 
 - worldview: 世界的に知名度がある、もしくはその世界に広く根付いていて世界観に登録すべきもの（後の全シナリオで参照可能）
 - sequel: 世界観に登録するべきではないが、次回以降の続編シナリオで利用するもの PCと関わりの深いNPCなど
 
 制約:
-- worldview は最大3件、sequel は最大5件　worldviewに入れたものも続編シナリオで利用できるので、両方に同じものを入れてはいけない　
+- worldview は最大3件、sequel は最大5件　必ずしも上限まで振り分ける必要はない。
+- worldviewに入れたものも続編シナリオで利用できるので、両方に同じものを入れてはいけない
+- 必要のない canon はいずれのカテゴリにも含めず、無視してよい
 - worldview のみ fame を設定（0〜50、小さいほど広く知られている）
 - fame はその設定が世界でどれだけ知られているかを基準に決める
 - 出力スキーマに必ず従う
@@ -587,6 +589,7 @@ canon_facts（これを振り分ける）:
                 fame=wv["fame"]
             )
 
+        nouns_mgr.sort_index_by_fame()
         # sequel 用 canon 保存
         sequel_path = get_data_path(f"worlds/{self.wid}/sessions/{self.sid}/canon_sequel.json")
         with sequel_path.open("w", encoding="utf-8") as f:
