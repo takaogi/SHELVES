@@ -245,7 +245,7 @@ class ChatEngine:
         elif model_level == "high":
             reasoning = {"effort": "low"}
         elif model_level == "very_high":
-            reasoning = {"effort": "low"}
+            reasoning = {"effort": "minimal"}
 
         try:
             req_args = {

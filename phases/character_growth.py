@@ -427,11 +427,11 @@ class CharacterGrowth:
             return None
 
         prompt = [
-            {"role": "system", "content": "あなたはキャラクター記録の作成者です。以下のセッション要約をもとに、三人称視点から200字ほどの記録を生成してください。"},
+            {"role": "system", "content": "あなたはTRPGのセッション完了に合わせたキャラクター記録の作成者です。以下のセッション要約をもとに、三人称視点から要点を抑えた150字ほどの簡潔なプレイヤーキャラクターの記録を生成してください。そのセッションでプレイヤーキャラクターが得た経験、最終的な結末、これからの展望に注意して記述してください。"},
             {"role": "user", "content": summary_text}
         ]
 
-        result = self.engine.chat(prompt, caller_name="GrowthHistory", model_level="high", max_tokens=5000)
+        result = self.engine.chat(prompt, caller_name="GrowthHistory", model_level="very_high", max_tokens=10000)
         if not result.strip():
             return None
 
