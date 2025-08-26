@@ -142,7 +142,7 @@ CORRECTABLE_FIELDS = {
     "12": ("beliefs", "信条・価値観（例：力こそ正義、命はすべて等しい）"),
     "13": ("likes", "好きなもの（猫、歴史、静かな場所など）"),
     "14": ("dislikes", "苦手なもの（虫、大声、嘘など）"),
-    "15": ("items", "所持品（装備や個人的な持ち物など）"),
+    "15": ("items", "所持品（装備や個人的な持ち物など）※非対応"),
     "16": ("summary", "一言紹介（このキャラを要約する1文）"),
     "17": ("background", "背景（経歴、動機、過去の出来事など自由記述）"),
     "18": ("notes", "備考・補足（その他なんでも）"),
@@ -198,8 +198,14 @@ class SessionCreate:
                 return self._confirm_skill_distribution()
             case 111:
                 return self._finalize_character(input_text)
-
+            
+            # 🆕 AI修正ステップ
+            case 112:
+                return self._ask_ai_correction()
+            case 113:
+                return self._handle_ai_correction(input_text)
                         
+
             case 1000:
                 return self._ask_scenario_direction()
             case 1001:
@@ -523,7 +529,7 @@ class SessionCreate:
                 lines.append(f"- {noun.get('name', '')}（{noun.get('type', '')}）: {noun.get('note', '')}")
 
         lines.append("\nこのキャラクターで作成しますか？")
-        lines.append("1. はい（レベル設定へ）\n2. 修正したい\n3. 別のキャラを再生成する")
+        lines.append("1. はい（レベル設定へ）\n2. 修正したい\n3. 別のキャラを再生成する\n4. AIに修正を依頼する")
 
         self.progress_info["step"] = 103
         return self.progress_info, "\n".join(lines)
@@ -562,9 +568,14 @@ class SessionCreate:
             self.progress_info["step"] = 100
             self.progress_info["auto_continue"] = True
             return self.progress_info, "キャラクターを再生成します。"
+        
+        elif choice == "4":
+            self.progress_info["step"] = 112
+            self.progress_info["auto_continue"] = True
+            return self.progress_info, "AIに修正を依頼します。"
 
         else:
-            return self._reject("1〜3のいずれかを入力してください。", step=103)
+            return self._reject("1〜4のいずれかを入力してください。", step=103)
    
     def _ask_correction_target(self) -> tuple[dict, str]:
 
@@ -576,7 +587,6 @@ class SessionCreate:
         return self.progress_info, "\n".join(lines)  
        
     def _handle_correction_target(self, input_text: str) -> tuple[dict, str]:
-
         choice = unicodedata.normalize("NFKC", input_text.strip())
         if choice == "19":
             self.progress_info["step"] = 102
@@ -591,11 +601,22 @@ class SessionCreate:
         self.flags["_correction_field"] = field
         current = self.flags["_char_generation_obj"].get(field, "（未設定）")
 
+        # 🆕 items の場合は AI 修正へ誘導
+        if field == "items":
+            self.progress_info["step"] = 102
+            self.progress_info["auto_continue"] = True
+            return self.progress_info, (
+                "所持品の修正は手動編集に対応していません。\n"
+                "AIによる修正を利用してください。\n"
+            )
+
+        # 通常フィールド
         if isinstance(current, list):
             current = ", ".join(current)
 
         self.progress_info["step"] = 106
         return self.progress_info, f"現在の{label}：\n{current}\n\n新しい値を入力してください。"
+
 
     def _handle_correction_input(self, input_text: str) -> tuple[dict, str]:
         field = self.flags.get("_correction_field")
@@ -821,7 +842,81 @@ class SessionCreate:
         else:
             return self._reject("1 または 2 を入力してください。", step=110)
         
+#キャラクターAI修正
+    def _ask_ai_correction(self) -> tuple[dict, str]:
+        self.progress_info["step"] = 113
+        return self.progress_info, "修正内容を短く入力してください（例：『名前を日本風に』、『弱点を追加』など）。"
+            
 
+    def _handle_ai_correction(self, input_text: str) -> tuple[dict, str]:
+        obj = self.flags.get("_char_generation_obj")
+        if not obj:
+            return self._reject("キャラクター情報がありません。", step=102)
+
+        long_desc = self.flags["worldview"].get("long_description", "")
+        self.ctx.nouns_mgr.set_worldview_id(self.wid)
+        nouns = self.ctx.nouns_mgr.entries[:15]
+        readable_nouns = "\n".join(
+            f"- {n['name']}（{n['type']}）：{n.get('notes','')}" for n in nouns
+        )
+
+        system_prompt = (
+            "あなたはTRPGのキャラクター修正アシスタントです。\n"
+            "以下の世界観説明・固有名詞・既存キャラクターデータを基に、\n"
+            "ユーザーの修正指示に従ってキャラクターを調整してください。\n"
+            "修正しない部分はそのまま残し、必ず完全なキャラクターJSONを返してください。\n\n"
+            "【出力仕様】CHARACTER_GENERATION_SCHEMA に準拠してください。\n\n"
+            "▼ 各フィールドの説明：\n"
+            "- name: 名前\n"
+            "- tags: PCを含む分類タグ\n"
+            "- gender: 性別\n"
+            "- age: 年齢\n"
+            "- race: 種族\n"
+            "- origin: 出身地\n"
+            "- occupation: 職業\n"
+            "- personality: 性格\n"
+            "- appearance: 容姿\n"
+            "- physique: 体格\n"
+            "- abilities: 能力\n"
+            "- weaknesses: 弱点\n"
+            "- likes: 好きなもの\n"
+            "- dislikes: 苦手なもの\n"
+            "- items: 所持品（{name,count,description}）\n"
+            "- beliefs: 信条\n"
+            "- summary: 一言紹介\n"
+            "- background: 背景\n"
+            "- notes: 備考\n"
+            "- used_nouns: 使用した固有名詞\n"
+        )
+
+        user_prompt = (
+            f"▼ 世界観の説明:\n{long_desc}\n\n"
+            f"▼ 固有名詞一覧:\n{readable_nouns}\n\n"
+            f"▼ 現在のキャラクター情報:\n{json.dumps(obj, ensure_ascii=False, indent=2)}\n\n"
+            f"▼ ユーザーの修正指示:\n{input_text.strip()}"
+        )
+
+        result = self.ctx.engine.chat(
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            caller_name="AutoCharacterCorrection",
+            model_level="high",
+            max_tokens=20000,
+            schema=CHARACTER_GENERATION_SCHEMA,
+        )
+
+        if isinstance(result, dict):
+            self.flags["_char_generation_obj"] = result
+            self.progress_info["step"] = 102
+            self.progress_info["auto_continue"] = True
+            return self.progress_info, "AIによる修正が完了しました。確認画面に戻ります。"
+        else:
+            return self._reject("AI修正に失敗しました。", step=102)
+        
+
+#セッション作成
 
     def _ask_scenario_direction(self) -> tuple[dict, str]:
         pc = self.flags.get("player_character", {})
