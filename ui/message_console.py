@@ -222,8 +222,12 @@ class MessageConsole:
         if value and self.input_callback:
             self.entry.delete("1.0", "end")
             self.entry.pack_forget()
+            # 入力をUIに即表示
+            self.print_message("Player", value)
+            # その後、上位ロジックに渡す
             self.input_callback(value)
         return "break"
+
 
     def start_spinner(self):
         self.entry.pack_forget()
@@ -234,18 +238,16 @@ class MessageConsole:
         self.spinner.stop()
         self.spinner_label.pack_forget()
 
-    def roll_2d6(self) -> dict:
-        result_container = {}
+    def wait_for_enter(self, prompt: str = "【エンターで決定】") -> None:
+        """
+        エンターが押されるまで待機する。
+        ダイス処理は呼び出し元で行う。
+        """
         event = threading.Event()
 
         self.stop_spinner()
 
         def handle_enter_key(event_obj):
-            dice1 = random.randint(1, 6)
-            dice2 = random.randint(1, 6)
-            total = dice1 + dice2
-            result = {"dice": [dice1, dice2], "total": total}
-            result_container["result"] = result
             event.set()
             self.entry.delete("1.0", "end")
             self.entry.pack_forget()
@@ -259,11 +261,12 @@ class MessageConsole:
         self.entry.bind("<Return>", handle_enter_key)
         self.entry.bind("<Shift-Return>", lambda e: None)
 
-        self.print_message("System", "【エンターで2d6を振ります】")
-        self.root.after(100, lambda: self.message_area.see("end"))
-        event.wait()
-        return result_container["result"]
+        # ← safe_printを使う
+        self.safe_print("System", prompt)
 
+        self.root.after(100, lambda: self.message_area.see("end"))
+
+        event.wait()
 
     def run(self):
         self.root.mainloop()
