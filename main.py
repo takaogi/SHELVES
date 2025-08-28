@@ -71,10 +71,13 @@ def run_loop(ui: MessageConsole, controller: MainController, progress_info: dict
             step = progress_info.get("step")
             log.debug(f"[Progress] phase: {phase}, step: {step}, last_input:{last_input}")
 
-            # ダイス要求があれば処理
+            from core.dice import roll_2d6
             if progress_info.get("flags", {}).get("request_dice_roll"):
                 progress_info["flags"].pop("request_dice_roll", None)
-                result = ui.roll_2d6()
+
+                ui.wait_for_enter("【エンターで2d6を振ります】")
+                result = roll_2d6()
+
                 last_input = f"{result['dice'][0]} + {result['dice'][1]} = {result['total']}"
                 current_input = last_input
                 ui.start_spinner()
@@ -97,7 +100,6 @@ def run_loop(ui: MessageConsole, controller: MainController, progress_info: dict
                 else:
                     # 入力待ち
                     def handle_input(user_input: str):
-                        ui.safe_print("Player", user_input)
                         run_loop(ui, controller, progress_info, user_input)
 
                     ui.wait_for_input(handle_input)

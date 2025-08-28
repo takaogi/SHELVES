@@ -1,2 +1,6 @@
 Ryusei Watanabe
+<<<<<<< HEAD
 mie_hisaragi
+=======
+Hisaragi
+>>>>>>> b999c86c6b322140934f3deff27ebe708d177bcc
