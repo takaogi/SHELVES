@@ -697,19 +697,14 @@ class WorldviewCreate:
             {"role": "user", "content": f"対象文:\n{long_desc}"}
         ]
 
-        try:
-            result = self.ctx.engine.chat(
-                messages=messages,
-                caller_name="NounExtract",
-                model_level="very_high",
-                max_tokens=15000,
-                schema=NOUNS_SCHEMA, 
-            )
-            nouns_list = result.get("nouns", [])
-            return nouns_list
-        except Exception as e:
-            self.log.warning(f"固有名詞抽出に失敗: {e}")
-            return []
+        result = self.ctx.engine.chat(
+            messages=messages,
+            caller_name="NounExtract",
+            model_level="very_high",
+            max_tokens=15000,
+            schema=NOUNS_SCHEMA, 
+        )
+        return result.get("nouns", [])
 
 
     def _handle_final_creation_decision(self, input_text: str):

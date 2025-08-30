@@ -3,7 +3,8 @@ import argparse
 import shutil
 import threading
 import time
-
+import sys
+from pathlib import Path
 from ui.message_console import MessageConsole
 
 from core.main_controller import MainController
@@ -23,20 +24,19 @@ from infra.net_status import check_online
 
 log = get_logger("Main")
 
+def ensure_api_key_file() -> Path:
+    """resources/api_key.txt を保証し、無ければダミーを生成"""
+    api_key_path = get_resource_path("resources/api_key.txt")
+    api_key_path.parent.mkdir(parents=True, exist_ok=True)
 
+    if not api_key_path.exists():
+        dummy_text = "PUT_YOUR_API_KEY_HERE\n"
+        api_key_path.write_text(dummy_text, encoding="utf-8")
+        msg = f"[致命的エラー] APIキーが存在しないため、ダミーファイルを生成しました: {api_key_path}\n" \
+              "このファイルを編集して正しいAPIキーを入力し、再実行してください。"
+        raise RuntimeError(msg)
 
-def _show_offline_and_wait(ui: MessageConsole, controller: MainController, progress_info: dict):
-    # 一度だけメッセージを出す（スパム防止）
-    flags = progress_info.setdefault("flags", {})
-    if not flags.get("_offline_warned"):
-        ui.safe_print("System", "[致命的エラー] ネットワークに接続できません。\nオンラインでのみ動作します。接続後に何か入力して再試行してください。")
-        flags["_offline_warned"] = True
-
-    def retry(_user_input: str):
-        # 入力は使わず再試行（現在の progress_info を維持）
-        run_loop(ui, controller, progress_info, "")
-
-    ui.wait_for_input(retry)
+    return api_key_path
 
 def clean_temp_folder():
     temp_path = get_data_path("temp")
@@ -59,12 +59,11 @@ def run_loop(ui: MessageConsole, controller: MainController, progress_info: dict
 
         current_input = last_input or ""
         while True:
-            # オンライン必須。未接続ならエラー表示して入力待ち → 再試行
+            # オンライン必須
             if not progress_info.get("_offline_checked"):
                 progress_info["_offline_checked"] = True
                 if not check_online():
-                    _show_offline_and_wait(ui, controller, progress_info)
-                    break
+                    raise RuntimeError("[致命的エラー] ネットワークに接続できません。オンライン専用アプリです。")
 
 
             phase = progress_info.get("phase")
@@ -125,6 +124,18 @@ def main():
 
     clean_temp_folder()
 
+    #api_keyとネットワークをチェック
+    try:
+        api_key_path = ensure_api_key_file()
+        if not check_online():
+            raise RuntimeError("[致命的エラー] ネットワークに接続できません。オンライン専用アプリです。")
+        engine = ChatEngine(api_key_path=api_key_path, debug=args.debug)
+
+    except Exception as e:
+        log.error(str(e))
+        input("Enter を押して終了します。")
+        sys.exit(1)
+
     ui = MessageConsole()
     state = SessionState()
 
@@ -135,11 +146,9 @@ def main():
     )
     state.reset()
 
+
     ctx = AppContext(
-        engine=ChatEngine(
-            api_key_path=get_resource_path("resources/api_key.txt"),
-            debug=args.debug
-        ),
+        engine=engine,
         ui=ui,
         state=state,
         worldview_mgr=WorldviewManager(),
