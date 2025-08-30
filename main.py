@@ -5,7 +5,7 @@ import threading
 import time
 import sys
 from pathlib import Path
-from ui.message_console import MessageConsole
+#from ui.message_console import MessageConsole
 
 from core.main_controller import MainController
 from core.session_state import SessionState
@@ -121,6 +121,7 @@ def main():
     # 起動オプション解析
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
+    parser.add_argument("--ui", choices=["tk", "kivy"], default="tk", help="UIフレームワークを選択 (tk/kivy)")
     args = parser.parse_args()
     set_debug_enabled(args.debug)
 
@@ -137,6 +138,12 @@ def main():
         log.error(str(e))
         input("Enter を押して終了します。")
         sys.exit(1)
+
+    # --- UI切り替え ---
+    if args.ui == "kivy":
+        from ui.message_console_kivy import MessageConsole
+    else:
+        from ui.message_console import MessageConsole
 
     ui = MessageConsole()
     state = SessionState()
@@ -173,9 +180,16 @@ def main():
             "startup": True
         }
     }
-
-    ui.root.after(0, lambda: run_loop(ui, controller, progress_info))
-    ui.run()
+    # --- UI差分処理 ---
+    if args.ui == "kivy":
+        # Kivy は run() 内でメインループ開始
+        def on_start(*_):
+            run_loop(ui, controller, progress_info)
+        ui.bind(on_start=on_start)
+        ui.run()
+    else:
+        ui.root.after(0, lambda: run_loop(ui, controller, progress_info))
+        ui.run()
 
 
 if __name__ == "__main__":
