@@ -40,6 +40,7 @@ class SessionSelect:
                 lines.append(f"{i}. {title} [{status}]")
 
         lines.append(f"{len(sessions)+1}. 新しいセッションを作成する")
+        lines.append(f"{len(sessions)+2}. 世界観の選択に戻る")
 
         self.progress_info["step"] = 1
         return self.progress_info, "\n".join(lines)
@@ -81,6 +82,13 @@ class SessionSelect:
             self.progress_info["step"] = 0
             self.progress_info["flags"] = {"worldview": self.worldview}
             return self.progress_info, None
+        
+        elif index == len(sessions)+1:
+            self.progress_info["phase"] = "worldview_select"
+            self.progress_info["step"] = 0
+            self.progress_info["flags"] = {}
+            self.progress_info["auto_continue"] = True
+            return self.progress_info, "世界観選択に戻ります。"
 
         return self._reject("範囲内の番号を選んでください。", step=1)
 

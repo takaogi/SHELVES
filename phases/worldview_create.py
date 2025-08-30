@@ -154,7 +154,8 @@ class WorldviewCreate:
         return self.progress_info, (
             "世界観の作成モードを選んでください：\n"
             "1. 通常作成モード（カテゴリを一つずつ指定）\n"
-            "2. 自動生成モード（自由記述から自動構築）"
+            "2. 自動生成モード（自由記述から自動構築）\n"
+            "3. 戻る"
         )
 
     def _handle_mode_selection(self, input_text: str):
@@ -169,9 +170,16 @@ class WorldviewCreate:
             self.flags["mode"] = "auto"
             self.progress_info["auto_continue"] = True
             return self.progress_info, "自動生成モードを開始します。"
+        elif choice == "3":
+            # ← ここで worldview_select に戻す
+            self.progress_info["phase"] = "worldview_select"
+            self.progress_info["step"] = 0
+            self.progress_info["flags"] = {}
+            self.progress_info["auto_continue"] = True
+            return self.progress_info, "世界観選択に戻ります。"
         else:
             self.progress_info["step"] = 1
-            return self.progress_info, "1 または 2 を入力してください。"
+            return self.progress_info, "1〜3 を入力してください。"
 
     def _ask_genre(self):
         self.progress_info["step"] = 11

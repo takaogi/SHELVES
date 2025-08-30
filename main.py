@@ -15,6 +15,7 @@ from core.session_manager import SessionManager
 from core.nouns_manager import NounsManager
 from core.character_manager import CharacterManager
 from core.canon_manager import CanonManager
+from core.dice import roll_dice
 
 from ai.chat_engine import ChatEngine
 
@@ -70,14 +71,21 @@ def run_loop(ui: MessageConsole, controller: MainController, progress_info: dict
             step = progress_info.get("step")
             log.debug(f"[Progress] phase: {phase}, step: {step}, last_input:{last_input}")
 
-            from core.dice import roll_2d6
+            
+
             if progress_info.get("flags", {}).get("request_dice_roll"):
-                progress_info["flags"].pop("request_dice_roll", None)
+                expr = progress_info["flags"].pop("request_dice_roll") or "2d6"
 
-                ui.wait_for_enter("【エンターで2d6を振ります】")
-                result = roll_2d6()
+                ui.wait_for_enter(f"【エンターで {expr} を振ります】")
+                result = roll_dice(expr)
 
-                last_input = f"{result['dice'][0]} + {result['dice'][1]} = {result['total']}"
+                dice_str = " + ".join(str(d) for d in result["dice"])
+                # 1個ならそのまま、複数なら合計表示付き
+                if result["count"] > 1:
+                    last_input = f"{dice_str} = {result['total']}"
+                else:
+                    last_input = f"{result['total']}"
+
                 current_input = last_input
                 ui.start_spinner()
                 continue

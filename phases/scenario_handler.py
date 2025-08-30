@@ -435,7 +435,7 @@ class ScenarioHandler:
 
     def _request_dice_roll(self) -> tuple[dict, None]:
         flags = self.progress_info.setdefault("flags", {})
-        flags["request_dice_roll"] = True
+        flags["request_dice_roll"] = "2d6"
 
         # 判定種別に応じた戻り先の設定
         if "action_check_plan" in flags:
