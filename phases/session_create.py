@@ -265,10 +265,16 @@ class SessionCreate:
                 index_map[idx] = c
                 idx += 1
 
+        # 新しいキャラクター作成
         lines.append(f"\n{idx}. 新しいキャラクターを作成する")
-        self.flags["_index_map"] = index_map
         self.flags["_new_character_index"] = idx
+        idx += 1
 
+        # 🆕 セッション選択に戻る
+        lines.append(f"{idx}. セッション選択に戻る")
+        self.flags["_return_to_session_select"] = idx
+
+        self.flags["_index_map"] = index_map
         self.progress_info["step"] = 2
         return self.progress_info, "\n".join(lines)
 
@@ -281,16 +287,21 @@ class SessionCreate:
 
         index_map = self.flags.get("_index_map", {})
         new_index = self.flags.get("_new_character_index")
+        return_index = self.flags.get("_return_to_session_select")
 
         if choice == new_index:
             self.progress_info["step"] = 100
             self.progress_info["auto_continue"] = True
             return self.progress_info, "新しいキャラクターを作成します。"
 
+        elif choice == return_index:
+            self.progress_info["phase"] = "session_select"
+            self.progress_info["step"] = 0
+            self.progress_info["auto_continue"] = True
+            return self.progress_info, "セッション選択に戻ります。"
+
         elif choice in index_map:
             selected = index_map[choice]
-
-            # 🔽 ここでIDからフルデータを取得
             cm = self.ctx.character_mgr
             cm.set_worldview_id(self.wid)
             full_data = cm.load_character_file(selected.get("id")) or selected
@@ -300,9 +311,9 @@ class SessionCreate:
             self.progress_info["auto_continue"] = True
             return self.progress_info, f"キャラクター『{full_data.get('name', '不明')}』を選択しました。"
 
-
         else:
             return self._reject("範囲内の番号を選んでください。", step=2)
+
         
 
     def _ask_character_description(self) -> tuple[dict, str]:

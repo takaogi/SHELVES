@@ -154,7 +154,8 @@ class WorldviewCreate:
         return self.progress_info, (
             "世界観の作成モードを選んでください：\n"
             "1. 通常作成モード（カテゴリを一つずつ指定）\n"
-            "2. 自動生成モード（自由記述から自動構築）"
+            "2. 自動生成モード（自由記述から自動構築）\n"
+            "3. 戻る"
         )
 
     def _handle_mode_selection(self, input_text: str):
@@ -169,9 +170,16 @@ class WorldviewCreate:
             self.flags["mode"] = "auto"
             self.progress_info["auto_continue"] = True
             return self.progress_info, "自動生成モードを開始します。"
+        elif choice == "3":
+            # ← ここで worldview_select に戻す
+            self.progress_info["phase"] = "worldview_select"
+            self.progress_info["step"] = 0
+            self.progress_info["flags"] = {}
+            self.progress_info["auto_continue"] = True
+            return self.progress_info, "世界観選択に戻ります。"
         else:
             self.progress_info["step"] = 1
-            return self.progress_info, "1 または 2 を入力してください。"
+            return self.progress_info, "1〜3 を入力してください。"
 
     def _ask_genre(self):
         self.progress_info["step"] = 11
@@ -697,19 +705,14 @@ class WorldviewCreate:
             {"role": "user", "content": f"対象文:\n{long_desc}"}
         ]
 
-        try:
-            result = self.ctx.engine.chat(
-                messages=messages,
-                caller_name="NounExtract",
-                model_level="very_high",
-                max_tokens=15000,
-                schema=NOUNS_SCHEMA, 
-            )
-            nouns_list = result.get("nouns", [])
-            return nouns_list
-        except Exception as e:
-            self.log.warning(f"固有名詞抽出に失敗: {e}")
-            return []
+        result = self.ctx.engine.chat(
+            messages=messages,
+            caller_name="NounExtract",
+            model_level="very_high",
+            max_tokens=15000,
+            schema=NOUNS_SCHEMA, 
+        )
+        return result.get("nouns", [])
 
 
     def _handle_final_creation_decision(self, input_text: str):
