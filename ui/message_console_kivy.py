@@ -5,10 +5,12 @@ from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
+from kivy.uix.widget import Widget
 from kivy.clock import Clock
 from kivy.core.window import Window
 import itertools
 import unicodedata
+from main import run_loop
 
 from infra.logging import get_logger
 from infra.path_helper import get_data_path
@@ -55,47 +57,54 @@ class GUISpinner:
         frame = next(self.spinner)
         self.label.text = f"{frame} 【{self.message}】"
 
+class MessageConsole_kivy_ui(Widget):
+    pass
 
-class MessageConsole(BoxLayout):
-    def __init__(self, **kwargs):
-        super().__init__(orientation="vertical", **kwargs)
-        self.log = get_logger("UI")
-        self.settings = load_ui_settings()
+class MessageConsole_kivyApp(App):
+    def build(self):
+        return MessageConsole_kivy_ui()
+    
+    #ここ以下で定義しているレイアウトはmessageConsole_kivy.kvで定義する
+    # def __init__(self):
+    #     super.__init__()
+        # super().__init__(orientation="vertical", **kwargs)
+        # self.log = get_logger("UI")
+        # self.settings = load_ui_settings()
 
-        # 上部: メッセージ表示
-        self.scroll = ScrollView(size_hint=(1, 0.9))
-        self.message_label = Label(
-            text="",
-            font_size=self.settings["font_size"],
-            color=self.settings["text_color"],
-            halign="left",
-            valign="top",
-            size_hint_y=None,
-            text_size=(Window.width * 0.95, None)
-        )
-        self.message_label.bind(texture_size=self._update_height)
-        self.scroll.add_widget(self.message_label)
+        # # 上部: メッセージ表示
+        # self.scroll = ScrollView(size_hint=(1, 0.9))
+        # self.message_label = Label(
+        #     text="",
+        #     font_size=self.settings["font_size"],
+        #     color=self.settings["text_color"],
+        #     halign="left",
+        #     valign="top",
+        #     size_hint_y=None,
+        #     text_size=(Window.width * 0.95, None)
+        # )
+        # self.message_label.bind(texture_size=self._update_height)
+        # self.scroll.add_widget(self.message_label)
 
-        # 下部: スピナーと入力欄
-        self.spinner_label = Label(
-            text="", font_size=self.settings["font_size"], color=self.settings["text_color"],
-            size_hint=(1, 0.05)
-        )
-        self.spinner = GUISpinner(self.spinner_label)
+        # # 下部: スピナーと入力欄
+        # self.spinner_label = Label(
+        #     text="", font_size=self.settings["font_size"], color=self.settings["text_color"],
+        #     size_hint=(1, 0.05)
+        # )
+        # self.spinner = GUISpinner(self.spinner_label)
 
-        self.entry = TextInput(
-            multiline=False,
-            size_hint=(1, 0.1),
-            background_color=(0.16, 0.16, 0.16, 1),
-            foreground_color=self.settings["text_color"],
-        )
-        self.entry.bind(on_text_validate=self._on_enter_text)
+        # self.entry = TextInput(
+        #     multiline=False,
+        #     size_hint=(1, 0.1),
+        #     background_color=(0.16, 0.16, 0.16, 1),
+        #     foreground_color=self.settings["text_color"],
+        # )
+        # self.entry.bind(on_text_validate=self._on_enter_text)
 
-        self.add_widget(self.scroll)
-        self.add_widget(self.spinner_label)
-        self.add_widget(self.entry)
+        # self.add_widget(self.scroll)
+        # self.add_widget(self.spinner_label)
+        # self.add_widget(self.entry)
 
-        self.input_callback = None
+        # self.input_callback = None
 
     def _update_height(self, instance, size):
         self.message_label.height = size[1]
@@ -156,12 +165,4 @@ class MessageConsole(BoxLayout):
     def _rgba_to_hex(self, rgba):
         r, g, b, a = [int(c * 255) for c in rgba]
         return f"#{r:02x}{g:02x}{b:02x}"
-
-
-class MessageConsoleApp(App):
-    def build(self):
-        return MessageConsole()
-
-
-if __name__ == "__main__":
-    MessageConsoleApp().run()
+    

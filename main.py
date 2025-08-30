@@ -5,7 +5,6 @@ import threading
 import time
 import sys
 from pathlib import Path
-#from ui.message_console import MessageConsole
 
 from core.main_controller import MainController
 from core.session_state import SessionState
@@ -54,7 +53,7 @@ def clean_temp_folder():
 
 
 
-def run_loop(ui: MessageConsole, controller: MainController, progress_info: dict, last_input: str = ""):
+def run_loop(ui, controller: MainController, progress_info: dict, last_input: str = ""):
     def loop():
         nonlocal progress_info, last_input
 
@@ -64,8 +63,6 @@ def run_loop(ui: MessageConsole, controller: MainController, progress_info: dict
             phase = progress_info.get("phase")
             step = progress_info.get("step")
             log.debug(f"[Progress] phase: {phase}, step: {step}, last_input:{last_input}")
-
-            
 
             if progress_info.get("flags", {}).get("request_dice_roll"):
                 expr = progress_info["flags"].pop("request_dice_roll") or "2d6"
@@ -121,7 +118,7 @@ def main():
     # 起動オプション解析
     parser = argparse.ArgumentParser()
     parser.add_argument("--debug", action="store_true", help="デバッグモードを有効にする")
-    parser.add_argument("--ui", choices=["tk", "kivy"], default="tk", help="UIフレームワークを選択 (tk/kivy)")
+    parser.add_argument("--ui", choices=["tk", "kivy"], default="kivy", help="UIフレームワークを選択 (tk/kivy)")
     args = parser.parse_args()
     set_debug_enabled(args.debug)
 
@@ -141,11 +138,14 @@ def main():
 
     # --- UI切り替え ---
     if args.ui == "kivy":
-        from ui.message_console_kivy import MessageConsole
-    else:
-        from ui.message_console import MessageConsole
+        from ui.message_console_kivy import MessageConsole_kivyApp
+        ui = MessageConsole_kivyApp()
+    elif args.ui == "tk":
+        from ui.message_console import MessageConsole_tk
+        ui = MessageConsole_tk()
+    else :
+        pass
 
-    ui = MessageConsole()
     state = SessionState()
 
     interrupted_session = (
@@ -180,17 +180,14 @@ def main():
             "startup": True
         }
     }
+
     # --- UI差分処理 ---
     if args.ui == "kivy":
         # Kivy は run() 内でメインループ開始
-        def on_start(*_):
-            run_loop(ui, controller, progress_info)
-        ui.bind(on_start=on_start)
         ui.run()
     else:
         ui.root.after(0, lambda: run_loop(ui, controller, progress_info))
         ui.run()
-
 
 if __name__ == "__main__":
     main()

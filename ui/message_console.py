@@ -91,8 +91,8 @@ class GUISpinner:
         if self._thread:
             self._thread.join()
 
-
-class MessageConsole:
+#
+class MessageConsole_tk:
     def __init__(self):
         self.settings = load_ui_settings()
         self.font = (self.settings["font_family"], self.settings["font_size"])
@@ -385,13 +385,4 @@ class MessageConsole:
         self.message_frame.config(bg=self.settings["bg_color"])
         self.bottom_frame.config(bg=self.settings["bg_color"])
         self.spinner_label.config(font=self.font, bg=self.settings["bg_color"], fg=self.settings["text_color"])
-
-if __name__ == "__main__":
-
-
-    ui = MessageConsole()
-    def run_test():
-        result = ui.roll_2d6()
-        ui.print_message("PG", f"取得結果 => {result}")
-    threading.Thread(target=run_test, daemon=True).start()
-    ui.run()
+    
