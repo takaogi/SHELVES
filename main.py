@@ -60,12 +60,6 @@ def run_loop(ui: MessageConsole, controller: MainController, progress_info: dict
 
         current_input = last_input or ""
         while True:
-            # オンライン必須
-            if not progress_info.get("_offline_checked"):
-                progress_info["_offline_checked"] = True
-                if not check_online():
-                    raise RuntimeError("[致命的エラー] ネットワークに接続できません。オンライン専用アプリです。")
-
 
             phase = progress_info.get("phase")
             step = progress_info.get("step")
