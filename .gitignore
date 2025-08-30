@@ -34,3 +34,6 @@ temp/
 resources/api_key.txt
 resources/icon.ico
 git.txt
+
+#Visual Studio
+.vs
