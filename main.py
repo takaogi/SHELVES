@@ -177,7 +177,7 @@ def main():
         from ui.message_console_kivy import MessageConsole_kivyApp
         ui = MessageConsole_kivyApp()
     elif args.ui == "tk":
-        from ui.message_console import MessageConsole_tk
+        from ui.message_console_tk import MessageConsole_tk
         ui = MessageConsole_tk()
     else :
         pass

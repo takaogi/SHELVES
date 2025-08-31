@@ -1,17 +1,33 @@
-<MessageConsole_kivy_ui>:    
-    canvas:
-        Rectangle:
-            pos: self.center_x - 5, 0
-            size: 10, self.height
+<MainWindow_kivy>:  
+    output: output
+    input: input
+    enterButton: enterButton
+
+    
+
+    GridLayout:
+        cols:1
+
+        ScrollView:
+            Label:
+                id: output
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+                text: "System output here"
+
+        Label:
+            id: spinner
+            text: "Spinner is output here (\|-/)"    
+
+        GridLayout:
+            cols:2
             
-    Label:
-        font_size: 70  
-        center_x: root.width / 4
-        top: root.top - 50
-        text: "0"
-        
-    Label:
-        font_size: 70  
-        center_x: root.width * 3 / 4
-        top: root.top - 50
-        text: "0"
+            TextInput:
+                id: input
+                multinline: True
+
+            Button:
+                id: enterButton
+                text: "Enter"
+                on_press: root.on_clicled_enterButton()
