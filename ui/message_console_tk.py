@@ -237,20 +237,34 @@ class MessageConsole_tk:
     def stop_spinner(self):
         self.spinner.stop()
         self.spinner_label.pack_forget()
-
-    def wait_for_enter(self, prompt: str = "【エンターで決定】") -> None:
+        
+    def wait_for_enter(self, arg=None, on_enter=None):
         """
-        エンターが押されるまで待機する。
-        ダイス処理は呼び出し元で行う。
+        非ブロッキング専用:
+        - wait_for_enter(callback)
+        - wait_for_enter("表示メッセージ", callback)
         """
-        event = threading.Event()
+        if callable(arg) and on_enter is None:
+            on_enter = arg
+            prompt = "【エンターで決定】"
+        elif isinstance(arg, str) and callable(on_enter):
+            prompt = arg
+        else:
+            raise TypeError("wait_for_enter は callback（必須）を受け取る非ブロッキング専用です")
 
         self.stop_spinner()
+        self.entry.config(state="normal")
 
-        def handle_enter_key(event_obj):
-            event.set()
-            self.entry.delete("1.0", "end")
-            self.entry.pack_forget()
+        # コールバックを保存
+        self.enter_callback = on_enter
+
+        def _handle_enter_nonblock(_ev):
+            if self.enter_callback:
+                cb = self.enter_callback
+                self.enter_callback = None  # 一度きりにしたい場合
+                self.entry.delete("1.0", "end")
+                self.entry.pack_forget()
+                cb("")  # 空文字を渡す
             return "break"
 
         self.entry.delete("1.0", "end")
@@ -258,15 +272,13 @@ class MessageConsole_tk:
         self.entry.focus()
         self.entry.unbind("<Return>")
         self.entry.unbind("<Shift-Return>")
-        self.entry.bind("<Return>", handle_enter_key)
+        self.entry.bind("<Return>", _handle_enter_nonblock)
         self.entry.bind("<Shift-Return>", lambda e: None)
 
-        # ← safe_printを使う
-        self.safe_print("System", prompt)
-
+        if prompt:
+            self.safe_print("System", prompt)
         self.root.after(100, lambda: self.message_area.see("end"))
 
-        event.wait()
 
     def run(self):
         self.root.mainloop()

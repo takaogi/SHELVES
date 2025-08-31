@@ -50,9 +50,13 @@ def init_engine_with_retry(ui, state: SessionState, args, interrupted_session):
             return
 
         if not check_online():
-            ui.safe_print("System","ネットワークに接続できません。接続を確認して Enter を押してください。")
-            ui.wait_for_enter(lambda _: check_and_retry())
+            def retry_network(_=""):
+                check_and_retry(None)
+            ui.safe_print("System","ネットワークに接続できません。")
+            ui.wait_for_enter("接続を確認して Enter を押してください。", retry_network)
             return
+
+
 
         try:
             engine = ChatEngine(api_key_path=api_key_path, debug=args.debug)
@@ -116,21 +120,26 @@ def run_loop(ui, controller: MainController, progress_info: dict, last_input: st
             step = progress_info.get("step")
             log.debug(f"[Progress] phase: {phase}, step: {step}, last_input:{last_input}")
 
+            #ダイス
             if progress_info.get("flags", {}).get("request_dice_roll"):
                 expr = progress_info["flags"].pop("request_dice_roll") or "2d6"
+                prompt = f"【エンターで {expr} を振ります】"
 
-                ui.wait_for_enter(f"【エンターで {expr} を振ります】")
-                result = roll_dice(expr)
+                def _after_enter(_=""):
+                    result = roll_dice(expr)
+                    dice_str = " + ".join(str(d) for d in result["dice"])
+                    if result.get("count", 1) > 1:
+                        user_input = f"{dice_str} = {result['total']}"
+                    else:
+                        user_input = f"{result['total']}"
+                    ui.start_spinner()
+                    # ダイス結果を「次の入力」として run_loop を再入
+                    run_loop(ui, controller, progress_info, user_input)
 
-                dice_str = " + ".join(str(d) for d in result["dice"])
-                if result["count"] > 1:
-                    last_input = f"{dice_str} = {result['total']}"
-                else:
-                    last_input = f"{result['total']}"
+                ui.wait_for_enter(prompt, _after_enter)  # ← 非ブロッキングでEnter待ち
+                break  # 現在のループは終了（続きは _after_enter で）
 
-                current_input = last_input
-                ui.start_spinner()
-                continue
+
 
             # ステップ進行
             progress_info, output = controller.step(progress_info, current_input)
