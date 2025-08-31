@@ -14,6 +14,7 @@ from core.session_manager import SessionManager
 from core.nouns_manager import NounsManager
 from core.character_manager import CharacterManager
 from core.canon_manager import CanonManager
+from core.dice import roll_dice
 
 from ai.chat_engine import ChatEngine
 
