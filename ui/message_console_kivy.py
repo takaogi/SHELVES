@@ -2,10 +2,13 @@
 
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.relativelayout import RelativeLayout
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
 from kivy.uix.widget import Widget
+from kivy.uix.gridlayout import GridLayout
+
 from kivy.clock import Clock
 from kivy.core.window import Window
 import itertools
@@ -57,12 +60,12 @@ class GUISpinner:
         frame = next(self.spinner)
         self.label.text = f"{frame} 【{self.message}】"
 
-class MessageConsole_kivy_ui(Widget):
+class MainWindow_kivy(RelativeLayout):
     pass
 
 class MessageConsole_kivyApp(App):
     def build(self):
-        return MessageConsole_kivy_ui()
+        return MainWindow_kivy()
     
     #ここ以下で定義しているレイアウトはmessageConsole_kivy.kvで定義する
     # def __init__(self):

@@ -1,17 +1,15 @@
-<MessageConsole_kivy_ui>:    
-    canvas:
-        Rectangle:
-            pos: self.center_x - 5, 0
-            size: 10, self.height
-            
-    Label:
-        font_size: 70  
-        center_x: root.width / 4
-        top: root.top - 50
-        text: "0"
+<MainWindow_kivy>:  
+    GridLayout:
+        cols:1
         
-    Label:
-        font_size: 70  
-        center_x: root.width * 3 / 4
-        top: root.top - 50
-        text: "0"
+        Label:
+            text: "output"
+
+        GridLayout:
+            cols:2
+            
+            TextInput:
+                multinline: False
+
+            Button:
+                text: "Enter"
