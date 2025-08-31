@@ -8,6 +8,7 @@ from kivy.uix.textinput import TextInput
 from kivy.uix.label import Label
 from kivy.uix.widget import Widget
 from kivy.uix.gridlayout import GridLayout
+from kivy.properties import ObjectProperty
 
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -21,7 +22,7 @@ import json
 from pathlib import Path
 
 DEFAULT_SETTINGS = {
-    "font_name": "Roboto",
+    "font_family": "Roboto",
     "font_size": 18,
     "text_color": (1, 1, 1, 1),
     "bg_color": (0.12, 0.12, 0.12, 1),
@@ -61,10 +62,24 @@ class GUISpinner:
         self.label.text = f"{frame} 【{self.message}】"
 
 class MainWindow_kivy(RelativeLayout):
-    pass
+    output = ObjectProperty(None)
+    input = ObjectProperty(None)
+    
+    def on_clicled_enterButton(self):
+        if self.input.text != "":
+            self.output.text += "\n" + self.input.text
+            self.input.text = ""
+        else:
+            pass
 
 class MessageConsole_kivyApp(App):
     def build(self):
+        self.settings = load_ui_settings()
+        self.font = (self.settings["font_family"], self.settings["font_size"])
+        self.log = get_logger("UI")
+
+        self.title = "S.H.E.L.V.E.S. - Message Console"
+
         return MainWindow_kivy()
     
     #ここ以下で定義しているレイアウトはmessageConsole_kivy.kvで定義する

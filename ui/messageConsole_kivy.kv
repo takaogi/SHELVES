@@ -1,15 +1,33 @@
 <MainWindow_kivy>:  
+    output: output
+    input: input
+    enterButton: enterButton
+
+    
+
     GridLayout:
         cols:1
-        
+
+        ScrollView:
+            Label:
+                id: output
+                size_hint_y: None
+                height: self.texture_size[1]
+                text_size: self.width, None
+                text: "System output here"
+
         Label:
-            text: "output"
+            id: spinner
+            text: "Spinner is output here (\|-/)"    
 
         GridLayout:
             cols:2
             
             TextInput:
-                multinline: False
+                id: input
+                multinline: True
 
             Button:
+                id: enterButton
                 text: "Enter"
+                on_press: root.on_clicled_enterButton()
