@@ -1,5 +1,4 @@
 <MainWindow_kivy>:
-    # Python 側で拾う参照
     message_label: message_label
     entry: entry
     scroll: scroll
@@ -20,25 +19,30 @@
                 size_hint_y: None
                 height: self.texture_size[1]
                 text_size: self.width, None
-                markup: True   # ← 色付けや [color] タグ用
+                markup: True
 
-        # 中央: スピナー
-        Label:
-            id: spinner_label
-            text: ""
-            size_hint_y: None
-            height: self.texture_size[1]
-
-        # 下部: 入力欄とボタン
+        # 下部: 入力欄／スピナーを切り替え表示
         RelativeLayout:
             size_hint_y: None
             height: "40dp"
 
+            # 入力欄
             TextInput:
                 id: entry
                 multiline: True
                 size_hint: (1, 1)
 
+            # スピナーラベル（同じ場所に重ねる）
+            Label:
+                id: spinner_label
+                text: ""
+                size_hint: (1, 1)
+                opacity: 0   # 初期は非表示
+                halign: "left"
+                valign: "middle"
+
+
+            # 送信ボタン
             Button:
                 id: enterButton
                 text: "▶"
@@ -46,4 +50,3 @@
                 size: "40dp", "40dp"
                 pos_hint: {"right": 1, "y": 0}
                 on_press: root.on_clicled_enterButton()
-

@@ -153,19 +153,19 @@ class MessageConsole_kivyApp(App):
             # …（on_enter_pressedの処理は今のまま）
         Clock.schedule_once(_setup)
 
-
     def start_spinner(self):
         def _setup(dt):
-            self.entry.opacity = 0        # entry非表示
+            self.entry.opacity = 0
             self.entry.disabled = True
+            self.spinner_label.opacity = 1   # ← 表示
             self.spinner.start()
         Clock.schedule_once(_setup)
-
 
     def stop_spinner(self):
         def _setup(dt):
             self.spinner.stop()
             self.spinner_label.text = ""
+            self.spinner_label.opacity = 0   # ← 非表示
             self.entry.opacity = 1
             self.entry.disabled = False
         Clock.schedule_once(_setup)
