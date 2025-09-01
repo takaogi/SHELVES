@@ -20,12 +20,13 @@ import json
 from pathlib import Path
 
 DEFAULT_SETTINGS = {
-    "font_family": "Meiryo.ttc",   # デフォルトは同梱フォント
+    "font_family": "Meiryo.ttc",
     "font_size": 18,
     "text_color": (1, 1, 1, 1),
     "bg_color": (0.12, 0.12, 0.12, 1),
     "player_color": (1, 1, 0, 1),
-    "player_bold": True
+    "player_bold": True,
+    "auto_scroll": True
 }
 
 def load_ui_settings():
@@ -86,19 +87,27 @@ class MessageConsole_kivyApp(App):
         self.message_label = root.ids.message_label
         self.entry = root.ids.entry
         self.spinner_label = root.ids.spinner_label
-        self.scroll = root.ids.scroll  # ← 追加
+        self.scroll = root.ids.scroll
+  
+        self.auto_scroll_enabled = self.settings.get("auto_scroll", True)# 自動スクロール有効フラグ
 
-        # 適用
         self.apply_settings()
         self.spinner = GUISpinner(self.spinner_label)
 
         return root
-    
+
+    def toggle_auto_scroll(self): #自動スクロールの ON/OFF を切り替える
+        self.auto_scroll_enabled = not self.auto_scroll_enabled
+        self.settings["auto_scroll"] = self.auto_scroll_enabled
+        save_ui_settings(self.settings)
+        state = "ON" if self.auto_scroll_enabled else "OFF"
+        self.safe_print("System", f"自動スクロールを {state} にしました")
+
     def _scroll_to_bottom(self, *args):
-        # message_label の高さと scroll の高さを比較
+        if not self.auto_scroll_enabled:
+            return
         if self.message_label.texture_size[1] > self.scroll.height:
             self.scroll.scroll_y = 0
-
 
     def apply_settings(self):
         font_size = self.settings["font_size"]
