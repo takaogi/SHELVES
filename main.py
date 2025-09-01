@@ -98,7 +98,6 @@ def init_engine_with_retry(ui, state: SessionState, args, interrupted_session):
     # 最初のチェック開始
     check_and_retry()
 
-
 def clean_temp_folder():
     temp_path = get_data_path("temp")
     temp_path.mkdir(parents=True, exist_ok=True)  # 必ず存在する状態にする
@@ -111,8 +110,6 @@ def clean_temp_folder():
                 item.unlink(missing_ok=True)
         except Exception as e:
             log.warning(f"[Temp Clean] {item} の削除失敗: {e}")
-
-
 
 def run_loop(ui, controller: MainController, progress_info: dict, last_input: str = ""):
     def loop():
