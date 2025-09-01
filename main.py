@@ -22,6 +22,10 @@ from infra.path_helper import get_data_path, get_resource_path
 from infra.logging import get_logger, set_debug_enabled
 from infra.net_status import check_online
 
+import os
+os.environ["KIVY_NO_ARGS"] = "1"#kivyがargparseを無視するように
+
+
 log = get_logger("Main")
 
 def init_engine_with_retry(ui, state: SessionState, args, interrupted_session):

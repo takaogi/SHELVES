@@ -1,33 +1,49 @@
-<MainWindow_kivy>:  
-    output: output
-    input: input
-    enterButton: enterButton
+<MainWindow_kivy>:
+    # Python 側で拾う参照
+    message_label: message_label
+    entry: entry
+    scroll: scroll
+    spinner_label: spinner_label
 
-    
+    BoxLayout:
+        orientation: "vertical"
 
-    GridLayout:
-        cols:1
-
+        # 上部: メッセージ表示
         ScrollView:
+            id: scroll
+            do_scroll_x: False
+            do_scroll_y: True
+
             Label:
-                id: output
+                id: message_label
+                text: ""
                 size_hint_y: None
                 height: self.texture_size[1]
                 text_size: self.width, None
-                text: "System output here"
+                markup: True   # ← 色付けや [color] タグ用
 
+        # 中央: スピナー
         Label:
-            id: spinner
-            text: "Spinner is output here (\|-/)"    
+            id: spinner_label
+            text: ""
+            size_hint_y: None
+            height: self.texture_size[1]
 
-        GridLayout:
-            cols:2
-            
+        # 下部: 入力欄とボタン
+        RelativeLayout:
+            size_hint_y: None
+            height: "40dp"
+
             TextInput:
-                id: input
-                multinline: True
+                id: entry
+                multiline: True
+                size_hint: (1, 1)
 
             Button:
                 id: enterButton
-                text: "Enter"
+                text: "▶"
+                size_hint: (None, None)
+                size: "40dp", "40dp"
+                pos_hint: {"right": 1, "y": 0}
                 on_press: root.on_clicled_enterButton()
+

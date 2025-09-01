@@ -13,23 +13,20 @@ from kivy.properties import ObjectProperty
 from kivy.clock import Clock
 from kivy.core.window import Window
 import itertools
-import unicodedata
-from main import run_loop
 
 from infra.logging import get_logger
-from infra.path_helper import get_data_path
+from infra.path_helper import get_data_path ,get_resource_path
 import json
 from pathlib import Path
 
 DEFAULT_SETTINGS = {
-    "font_family": "Roboto",
+    "font_family": "Meiryo.ttc",   # デフォルトは同梱フォント
     "font_size": 18,
     "text_color": (1, 1, 1, 1),
     "bg_color": (0.12, 0.12, 0.12, 1),
-    "player_color": (1, 1, 0, 1),   # yellow
+    "player_color": (1, 1, 0, 1),
     "player_bold": True
 }
-
 
 def load_ui_settings():
     path = get_data_path("ui_settings.json")
@@ -37,6 +34,11 @@ def load_ui_settings():
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     return DEFAULT_SETTINGS.copy()
+
+def save_ui_settings(settings):
+    path = get_data_path("ui_settings.json")
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(settings, f, indent=2, ensure_ascii=False)
 
 
 class GUISpinner:
@@ -62,67 +64,47 @@ class GUISpinner:
         self.label.text = f"{frame} 【{self.message}】"
 
 class MainWindow_kivy(RelativeLayout):
-    output = ObjectProperty(None)
-    input = ObjectProperty(None)
-    
     def on_clicled_enterButton(self):
-        if self.input.text != "":
-            self.output.text += "\n" + self.input.text
-            self.input.text = ""
-        else:
-            pass
+        app = App.get_running_app()
+        text = app.entry.text.strip()
+        if text:
+            app.print_message("Player", text)
+            if hasattr(app, "input_callback") and app.input_callback:
+                cb = app.input_callback
+                app.input_callback = None
+                cb(text)
+            app.entry.text = ""
+
+
 
 class MessageConsole_kivyApp(App):
     def build(self):
         self.settings = load_ui_settings()
-        self.font = (self.settings["font_family"], self.settings["font_size"])
-        self.log = get_logger("UI")
+        self.font_path = str(get_resource_path(f"resources/fonts/{self.settings['font_family']}"))
 
-        self.title = "S.H.E.L.V.E.S. - Message Console"
+        root = MainWindow_kivy()
+        self.message_label = root.ids.message_label
+        self.entry = root.ids.entry
+        self.spinner_label = root.ids.spinner_label
 
-        return MainWindow_kivy()
-    
-    #ここ以下で定義しているレイアウトはmessageConsole_kivy.kvで定義する
-    # def __init__(self):
-    #     super.__init__()
-        # super().__init__(orientation="vertical", **kwargs)
-        # self.log = get_logger("UI")
-        # self.settings = load_ui_settings()
+        # 適用
+        self.apply_settings()
+        self.spinner = GUISpinner(self.spinner_label)
 
-        # # 上部: メッセージ表示
-        # self.scroll = ScrollView(size_hint=(1, 0.9))
-        # self.message_label = Label(
-        #     text="",
-        #     font_size=self.settings["font_size"],
-        #     color=self.settings["text_color"],
-        #     halign="left",
-        #     valign="top",
-        #     size_hint_y=None,
-        #     text_size=(Window.width * 0.95, None)
-        # )
-        # self.message_label.bind(texture_size=self._update_height)
-        # self.scroll.add_widget(self.message_label)
+        return root
 
-        # # 下部: スピナーと入力欄
-        # self.spinner_label = Label(
-        #     text="", font_size=self.settings["font_size"], color=self.settings["text_color"],
-        #     size_hint=(1, 0.05)
-        # )
-        # self.spinner = GUISpinner(self.spinner_label)
+    def apply_settings(self):
+        font_size = self.settings["font_size"]
+        font_path = self.font_path
 
-        # self.entry = TextInput(
-        #     multiline=False,
-        #     size_hint=(1, 0.1),
-        #     background_color=(0.16, 0.16, 0.16, 1),
-        #     foreground_color=self.settings["text_color"],
-        # )
-        # self.entry.bind(on_text_validate=self._on_enter_text)
+        self.message_label.font_name = font_path
+        self.message_label.font_size = font_size
 
-        # self.add_widget(self.scroll)
-        # self.add_widget(self.spinner_label)
-        # self.add_widget(self.entry)
+        self.entry.font_name = font_path
+        self.entry.font_size = font_size
 
-        # self.input_callback = None
+        self.spinner_label.font_name = font_path
+        self.spinner_label.font_size = font_size
 
     def _update_height(self, instance, size):
         self.message_label.height = size[1]
@@ -138,12 +120,6 @@ class MessageConsole_kivyApp(App):
     def safe_print(self, sender, message):
         Clock.schedule_once(lambda dt: self.print_message(sender, message))
 
-    def wait_for_input(self, on_input_received):
-        self.input_callback = on_input_received
-        self.spinner.stop()
-        self.entry.text = ""
-        self.entry.focus = True
-
     def _on_enter_text(self, instance):
         value = self.entry.text.strip()
         if value and self.input_callback:
@@ -151,36 +127,50 @@ class MessageConsole_kivyApp(App):
             self.input_callback(value)
         self.entry.text = ""
 
-    def wait_for_enter(self, on_enter_pressed, prompt: str = "【エンターで決定】"):
-        """
-        エンターが押されるまで待機する（入力は使わない）。
-        on_enter_pressed: Enterキーで呼び出されるコールバック関数。
-        """
-        self.spinner.stop()
-        self.safe_print("System", prompt)
-
-        # 入力欄を空にしてフォーカス
-        self.entry.text = ""
-        self.entry.focus = True
-
-        def _handler(instance):
-            # 入力内容は使わずに確定
+    def wait_for_input(self, on_input_received):
+        def _setup(dt):
+            self.input_callback = on_input_received
+            self.spinner.stop()
+            self.spinner_label.text = ""   # スピナー消す
+            self.entry.opacity = 1
+            self.entry.disabled = False
             self.entry.text = ""
-            on_enter_pressed()
+            self.entry.focus = True
+            self.entry.unbind(on_text_validate=self._on_enter_text)
+            self.entry.bind(on_text_validate=self._on_enter_text)
+        Clock.schedule_once(_setup)
 
-        # 既存の入力ハンドラを退避して、Enter押下で on_enter_pressed を呼ぶ
-        self.entry.unbind(on_text_validate=self._on_enter_text)
-        self.entry.bind(on_text_validate=_handler)
+
+    def wait_for_enter(self, prompt: str = "【エンターで決定】", on_enter_pressed=None):
+        def _setup(dt):
+            self.spinner.stop()
+            self.spinner_label.text = ""
+            self.safe_print("System", prompt)
+            self.entry.opacity = 1
+            self.entry.disabled = False
+            self.entry.text = ""
+            self.entry.focus = False
+            # …（on_enter_pressedの処理は今のまま）
+        Clock.schedule_once(_setup)
 
 
     def start_spinner(self):
-        self.entry.text = ""
-        self.spinner.start()
+        def _setup(dt):
+            self.entry.opacity = 0        # entry非表示
+            self.entry.disabled = True
+            self.spinner.start()
+        Clock.schedule_once(_setup)
+
 
     def stop_spinner(self):
-        self.spinner.stop()
+        def _setup(dt):
+            self.spinner.stop()
+            self.spinner_label.text = ""
+            self.entry.opacity = 1
+            self.entry.disabled = False
+        Clock.schedule_once(_setup)
+
 
     def _rgba_to_hex(self, rgba):
         r, g, b, a = [int(c * 255) for c in rgba]
         return f"#{r:02x}{g:02x}{b:02x}"
-    
