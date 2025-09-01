@@ -86,12 +86,19 @@ class MessageConsole_kivyApp(App):
         self.message_label = root.ids.message_label
         self.entry = root.ids.entry
         self.spinner_label = root.ids.spinner_label
+        self.scroll = root.ids.scroll  # ← 追加
 
         # 適用
         self.apply_settings()
         self.spinner = GUISpinner(self.spinner_label)
 
         return root
+    
+    def _scroll_to_bottom(self, *args):
+        # message_label の高さと scroll の高さを比較
+        if self.message_label.texture_size[1] > self.scroll.height:
+            self.scroll.scroll_y = 0
+
 
     def apply_settings(self):
         font_size = self.settings["font_size"]
@@ -116,6 +123,7 @@ class MessageConsole_kivyApp(App):
         color = self.settings["player_color"] if is_player else self.settings["text_color"]
         prefix = "-- " if is_player else ""
         self.message_label.text += f"[color={self._rgba_to_hex(color)}]{prefix}{message}[/color]\n"
+        Clock.schedule_once(self._scroll_to_bottom, 0)
 
     def safe_print(self, sender, message):
         Clock.schedule_once(lambda dt: self.print_message(sender, message))
@@ -131,15 +139,15 @@ class MessageConsole_kivyApp(App):
         def _setup(dt):
             self.input_callback = on_input_received
             self.spinner.stop()
-            self.spinner_label.text = ""   # スピナー消す
+            self.spinner_label.text = ""
             self.entry.opacity = 1
             self.entry.disabled = False
             self.entry.text = ""
             self.entry.focus = True
             self.entry.unbind(on_text_validate=self._on_enter_text)
             self.entry.bind(on_text_validate=self._on_enter_text)
+            Clock.schedule_once(self._scroll_to_bottom, 0) 
         Clock.schedule_once(_setup)
-
 
     def wait_for_enter(self, prompt: str = "【エンターで決定】", on_enter_pressed=None):
         def _setup(dt):
@@ -150,8 +158,10 @@ class MessageConsole_kivyApp(App):
             self.entry.disabled = False
             self.entry.text = ""
             self.entry.focus = False
+            Clock.schedule_once(self._scroll_to_bottom, 0) 
             # …（on_enter_pressedの処理は今のまま）
         Clock.schedule_once(_setup)
+
 
     def start_spinner(self):
         def _setup(dt):
