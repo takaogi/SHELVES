@@ -33,7 +33,7 @@ def init_engine_with_retry(ui, state: SessionState, args, interrupted_session):
     非同期でAPIキーとネットワークを検証し、成功したらctxとcontrollerを作ってrun_loop開始。
     """
 
-    api_key_path = get_resource_path("resources/api_key.txt")
+    api_key_path = get_data_path("api_key.txt")
 
     def check_and_retry(user_input=None):
         # ユーザー入力があったらファイルに保存
@@ -59,8 +59,6 @@ def init_engine_with_retry(ui, state: SessionState, args, interrupted_session):
             ui.safe_print("System","ネットワークに接続できません。")
             ui.wait_for_enter("接続を確認して Enter を押してください。", retry_network)
             return
-
-
 
         try:
             engine = ChatEngine(api_key_path=api_key_path, debug=args.debug)
