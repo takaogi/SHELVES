@@ -9,6 +9,7 @@ from kivy.uix.label import Label
 from kivy.uix.widget import Widget
 from kivy.uix.gridlayout import GridLayout
 from kivy.properties import ObjectProperty
+from kivy.utils import platform
 
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -67,14 +68,7 @@ class GUISpinner:
 class MainWindow_kivy(RelativeLayout):
     def on_clicled_enterButton(self):
         app = App.get_running_app()
-        text = app.entry.text.strip()
-        if text:
-            app.print_message("Player", text)
-            if hasattr(app, "input_callback") and app.input_callback:
-                cb = app.input_callback
-                app.input_callback = None
-                cb(text)
-            app.entry.text = ""
+        app.handle_submit()
 
 
 
@@ -94,7 +88,21 @@ class MessageConsole_kivyApp(App):
         self.apply_settings()
         self.spinner = GUISpinner(self.spinner_label)
 
+        if platform in ("win", "linux", "macosx"):  # PC の場合だけ
+            Window.bind(on_key_down=self._on_key_down_pc)
+
         return root
+    
+    def handle_submit(self):
+        """入力欄の内容を送信する共通処理"""
+        text = self.entry.text.strip()
+        if text:
+            self.print_message("Player", text)
+            if self.input_callback:
+                cb = self.input_callback
+                self.input_callback = None
+                cb(text)
+        self.entry.text = ""
 
     def toggle_auto_scroll(self): #自動スクロールの ON/OFF を切り替える
         self.auto_scroll_enabled = not self.auto_scroll_enabled
@@ -171,6 +179,14 @@ class MessageConsole_kivyApp(App):
             # …（on_enter_pressedの処理は今のまま）
         Clock.schedule_once(_setup)
 
+    def _on_key_down_pc(self, window, key, scancode, codepoint, modifiers):
+        if codepoint == "enter" or key in (13, 271):
+            if "shift" in modifiers:
+                self.entry.insert_text("\n")
+            else:
+                self.handle_submit()
+            return True
+        return False
 
     def start_spinner(self):
         def _setup(dt):
