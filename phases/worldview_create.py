@@ -574,7 +574,7 @@ class WorldviewCreate:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
         ]
-        long_desc = self.ctx.engine.chat(messages=messages, caller_name="WorldviewDetail",model_level = "very_high",max_tokens = 10000)
+        long_desc = self.ctx.engine.chat(messages=messages, caller_name="WorldviewDetail",model_level = "very_high",max_tokens = 5000)
 
         draft["long_description"] = long_desc.strip()
         self.progress_info["step"] = 103
@@ -709,7 +709,7 @@ class WorldviewCreate:
             messages=messages,
             caller_name="NounExtract",
             model_level="very_high",
-            max_tokens=15000,
+            max_tokens=10000,
             schema=NOUNS_SCHEMA, 
         )
         return result.get("nouns", [])
@@ -801,7 +801,7 @@ class WorldviewCreate:
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt}
         ]
-        new_desc = self.ctx.engine.chat(messages, caller_name="WorldviewRevision", model_level="very_high", max_tokens=10000)
+        new_desc = self.ctx.engine.chat(messages, caller_name="WorldviewRevision", model_level="very_high", max_tokens=5000)
 
         draft["long_description"] = new_desc.strip()
         self.progress_info["step"] = 103

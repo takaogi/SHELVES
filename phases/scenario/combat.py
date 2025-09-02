@@ -159,7 +159,7 @@ class CombatHandler:
                 messages=all_messages,
                 caller_name="CombatHandler:evaluate_strategy",
                 model_level="high",
-                max_tokens=10000,
+                max_tokens=3000,
                 schema=COMBAT_EVAL_SCHEMA
             )
             if not isinstance(parsed, dict):

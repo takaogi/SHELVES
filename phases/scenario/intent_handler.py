@@ -246,12 +246,12 @@ INTENT_SNIPPETS_MAP = {
 }
 
 INTENT_MODEL_CONFIG = {
-    "action": {"model_level": "high", "max_tokens": 30000},
-    "talk": {"model_level": "high", "max_tokens": 20000},
-    "info_request": {"model_level": "high", "max_tokens": 20000},
-    "gm_query": {"model_level": "high", "max_tokens": 20000},
-    "system": {"model_level": "medium", "max_tokens": 20000},
-    "other": {"model_level": "high", "max_tokens": 20000}
+    "action": {"model_level": "high", "max_tokens": 5000},
+    "talk": {"model_level": "high", "max_tokens": 5000},
+    "info_request": {"model_level": "high", "max_tokens": 5000},
+    "gm_query": {"model_level": "high", "max_tokens": 5000},
+    "system": {"model_level": "medium", "max_tokens": 5000},
+    "other": {"model_level": "high", "max_tokens": 5000}
 }
 
 
@@ -321,14 +321,14 @@ class IntentHandler:
                     "あなたはTRPGのゲームマスターです。\n"
                     "これは物語の第一章の導入です。物語の始まりとして、舞台や背景、PCがこの物語に関わるきっかけを"
                     "臨場感ある導入で描写してください。読者が物語世界に引き込まれるように、情景・空気感・緊張感をラノベ風に描いてください。\n"
-                    "全文で800字程度で、最後にPCが何をするか選べるような直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。1つの行動案ごとに改行し、番号ごとに別行にしてください。\n"
+                    "全文で500字程度で、最後にPCが何をするか選べるような直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。1つの行動案ごとに改行し、番号ごとに別行にしてください。\n"
                     "プレイヤーに提示する文章は、**わかりやすいようあまり固有名詞を使わず（使うときは十分説明付きで）**、ラノベ風の三人称・地の文で常体にしてください。描写はかっこつけず、わかりやすさを優先して説明してください。\n"
                     "基本的に、まずはPCの日常の描写を行い、次にシナリオ、章、セクションの目的のうち、一番自然に向かうことのできる目的へ進むことになるきっかけを描写し、行動案で誘導することを推奨します。"
                 )
             else:
                 instruction = (
                     "あなたはTRPGのゲームマスターです。\n"
-                    "以下の情報と会話履歴を参考に、新たに始まる章の導入描写を500字程度で提示してください。\n"
+                    "以下の情報と会話履歴を参考に、新たに始まる章の導入描写を300字程度で提示してください。\n"
                     "プレイヤーキャラクターが今現在どこにいてどのような状況なのかを、具体的に描写してください。\n"
                     "プレイヤーキャラクターがこれから何をすれば良いのかが自然とわかるように、具体的な背景と、直後の行動案を「行動案：1) ～ 2) ～」の形式で2～3個提示してください。1つの行動案ごとに改行し、番号ごとに別行にしてください。\n"
                     "プレイヤーに提示する文章は、**わかりやすいようあまり固有名詞を使わず（使うときは十分説明付きで）**、ラノベ風の三人称・地の文で常体にしてください。描写はかっこつけず、わかりやすさを優先して説明してください。"
@@ -367,7 +367,7 @@ class IntentHandler:
             messages=messages,
             caller_name=f"IntentHandler:{kind}_intro",
             model_level=model_level,
-            max_tokens=20000
+            max_tokens=5000
         )
 
         self.convlog.append("system", response)
@@ -720,7 +720,7 @@ PCが直前に行った行為判定の結果を踏まえ、特にPCの置かれ�
             messages=messages,
             caller_name="IntentHandler:post_check_description",
             model_level="high",
-            max_tokens=20000,
+            max_tokens=5000,
         )
 
         self.convlog.append("system", response)
@@ -809,7 +809,7 @@ PCが直前に行った行為判定の結果を踏まえ、特にPCの置かれ�
             messages=messages,
             caller_name="IntentHandler:post_combat_description",
             model_level="high",
-            max_tokens=20000,
+            max_tokens=5000,
         )
 
         self.convlog.append("system", response)

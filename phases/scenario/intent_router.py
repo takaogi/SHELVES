@@ -55,7 +55,7 @@ def classify_intent(ctx, input_text: str, convlog) -> IntentLabel:
         messages=messages,
         caller_name="IntentRouter",
         model_level="medium",
-        max_tokens=20000,
+        max_tokens=1000,
         schema=INTENT_SCHEMA,   # ← ここ追加！
     )
 

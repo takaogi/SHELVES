@@ -453,7 +453,7 @@ class SessionCreate:
             messages=messages,
             caller_name="AutoCharacter",
             model_level="very_high",
-            max_tokens=20000,
+            max_tokens=5000,
             schema=CHARACTER_GENERATION_SCHEMA
         )
 
@@ -913,8 +913,8 @@ class SessionCreate:
                 {"role": "user", "content": user_prompt},
             ],
             caller_name="AutoCharacterCorrection",
-            model_level="high",
-            max_tokens=20000,
+            model_level="very_high",
+            max_tokens=5000,
             schema=CHARACTER_GENERATION_SCHEMA,
         )
 
@@ -1398,7 +1398,7 @@ class SessionCreate:
                 messages=prompt,
                 caller_name="ScenarioGenerator",
                 model_level="very_high", 
-                max_tokens=20000, 
+                max_tokens=8000, 
                 schema=SCENARIO_DRAFT_SCHEMA
             )
             scenario = result if isinstance(result, dict) else {}

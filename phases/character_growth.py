@@ -431,7 +431,7 @@ class CharacterGrowth:
             {"role": "user", "content": summary_text}
         ]
 
-        result = self.engine.chat(prompt, caller_name="GrowthHistory", model_level="very_high", max_tokens=10000)
+        result = self.engine.chat(prompt, caller_name="GrowthHistory", model_level="very_high", max_tokens=3000)
         if not result.strip():
             return None
 
@@ -569,7 +569,7 @@ canon_facts（これを振り分ける）:
             messages=[{"role": "system", "content": system_prompt}],
             caller_name="FinalizeCanon",
             model_level="very_high",
-            max_tokens=20000,
+            max_tokens=10000,
             schema=schema
         )
 

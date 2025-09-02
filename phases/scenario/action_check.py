@@ -212,7 +212,7 @@ class ActionCheck:
             messages=all_messages,
             caller_name="ActionCheck:suggest",
             model_level="high",
-            max_tokens = 10000,
+            max_tokens = 3000,
             schema=ACTION_CHECK_PLAN_SCHEMA
         )
         try:
