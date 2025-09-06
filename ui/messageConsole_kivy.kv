@@ -7,7 +7,7 @@
     # 🔹 背景色の適用
     canvas.before:
         Color:
-            rgba: app.settings["bg_color"]
+            rgba: self.bg_color
         Rectangle:
             pos: self.pos
             size: self.size
@@ -48,7 +48,6 @@
                 opacity: 0   # 初期は非表示
                 halign: "left"
                 valign: "middle"
-                color: app.settings["text_color"]
 
             # 送信ボタン
             Button:
