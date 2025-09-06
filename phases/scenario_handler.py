@@ -283,7 +283,7 @@ class ScenarioHandler:
         self.progress_info["step"] = 2010
         return self.progress_info, None
 
-    def _intent_handler(self, player_input: str) -> tuple[dict, str]:
+    def _intent_handler(self, player_input: str | None) -> tuple[dict, str]:
         if "intent" not in self.flags:
             return self._fail("意図が設定されていません")
 
@@ -346,6 +346,7 @@ class ScenarioHandler:
 
     def _handle_action_check_init(self) -> tuple[dict, str | None]:
         self.flags.pop("action_check_plan", None)
+        self.flags.pop("last_check_result", None)
         self.progress_info["step"] = 3001
         return self.progress_info, None
 
@@ -377,7 +378,7 @@ class ScenarioHandler:
         handler = ActionCheck(self.ctx, self.state, self.flags, self.convlog)
 
         result_text = handler.show_result(player_input)
-        self.convlog.append("user", result_text)
+        self.flags["last_check_result"] = result_text
 
         self.progress_info["step"] = 3022
         self.progress_info["auto_continue"] = True
@@ -390,6 +391,7 @@ class ScenarioHandler:
 
     def _handle_combat_init(self) -> tuple[dict, str | None]:
         self.flags.pop("combat_evaluation", None)
+        self.flags.pop("last_combat_result", None)
         self.progress_info["step"] = 4001
         return self.progress_info, None
 
@@ -420,7 +422,7 @@ class ScenarioHandler:
         handler = CombatHandler(self.ctx, self.state, self.flags, self.convlog)
 
         result_text = handler.show_result(player_input)
-        self.convlog.append("user", result_text)
+        self.flags["last_combat_result"] = result_text
 
         self.progress_info["step"] = 4022
         self.progress_info["auto_continue"] = True

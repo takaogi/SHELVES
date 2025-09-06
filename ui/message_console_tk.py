@@ -5,7 +5,6 @@ import threading
 import itertools
 import time
 import unicodedata
-import random
 import json
 
 from tkinter import colorchooser, ttk
@@ -100,7 +99,7 @@ class MessageConsole_tk:
 
         self.root = tk.Tk()
         self.root.title("S.H.E.L.V.E.S. - Message Console")
-        self.root.geometry("1600x900")
+        self.root.geometry("1000x700")
         self.root.configure(bg=self.settings["bg_color"])
 
         self.root.grid_rowconfigure(0, weight=1)
