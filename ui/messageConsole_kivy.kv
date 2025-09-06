@@ -1,4 +1,5 @@
 <MainWindow_kivy>:
+    action_bar: action_bar
     message_label: message_label
     entry: entry
     scroll: scroll
@@ -6,6 +7,10 @@
 
     BoxLayout:
         orientation: "vertical"
+
+        ActionBar:
+            id:action_bar
+            background_color: "red"
 
         # 上部: メッセージ表示
         ScrollView:
@@ -50,3 +55,4 @@
                 size: "40dp", "40dp"
                 pos_hint: {"right": 1, "y": 0}
                 on_press: root.on_clicled_enterButton()
+                background_color: "red"

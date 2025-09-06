@@ -1,5 +1,6 @@
 # ui/message_console_kivy.py
 
+import kivy
 from kivy.app import App
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.relativelayout import RelativeLayout
@@ -10,6 +11,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.gridlayout import GridLayout
 from kivy.properties import ObjectProperty
 from kivy.utils import platform
+from kivy.utils import get_color_from_hex
 
 from kivy.clock import Clock
 from kivy.core.window import Window
