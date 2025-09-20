@@ -4,6 +4,14 @@
     scroll: scroll
     spinner_label: spinner_label
 
+    # 🔹 背景色の適用
+    canvas.before:
+        Color:
+            rgba: self.bg_color
+        Rectangle:
+            pos: self.pos
+            size: self.size
+
     BoxLayout:
         orientation: "vertical"
 
@@ -40,7 +48,6 @@
                 opacity: 0   # 初期は非表示
                 halign: "left"
                 valign: "middle"
-
 
             # 送信ボタン
             Button:

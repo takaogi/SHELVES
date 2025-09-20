@@ -10,6 +10,7 @@ from kivy.uix.widget import Widget
 from kivy.uix.gridlayout import GridLayout
 from kivy.properties import ObjectProperty
 from kivy.utils import platform
+from kivy.properties import ListProperty
 
 from kivy.clock import Clock
 from kivy.core.window import Window
@@ -66,6 +67,8 @@ class GUISpinner:
         self.label.text = f"{frame} 【{self.message}】"
 
 class MainWindow_kivy(RelativeLayout):
+    bg_color = ListProperty(DEFAULT_SETTINGS["bg_color"])
+
     def on_clicled_enterButton(self):
         app = App.get_running_app()
         app.handle_submit()
@@ -85,7 +88,6 @@ class MessageConsole_kivyApp(App):
   
         self.auto_scroll_enabled = self.settings.get("auto_scroll", True)# 自動スクロール有効フラグ
 
-        self.apply_settings()
         self.spinner = GUISpinner(self.spinner_label)
 
         if platform in ("win", "linux", "macosx"):  # PC の場合だけ
@@ -93,6 +95,10 @@ class MessageConsole_kivyApp(App):
 
         return root
     
+    def on_start(self):
+        # アプリ起動後に適用
+        self.apply_settings()
+
     def handle_submit(self):
         """入力欄の内容を送信する共通処理"""
         text = self.entry.text.strip()
@@ -129,6 +135,11 @@ class MessageConsole_kivyApp(App):
 
         self.spinner_label.font_name = font_path
         self.spinner_label.font_size = font_size
+
+        # 🔹 MainWindow の bg_color を更新
+        if self.root:
+            self.root.bg_color = self.settings["bg_color"]
+
 
     def _update_height(self, instance, size):
         self.message_label.height = size[1]
